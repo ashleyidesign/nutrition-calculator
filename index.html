@@ -248,7 +248,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 3.2 - Race Detection & Duration Override
+                Version 3.3 - Race-specific nutrition calculations
             </div>
         </div>
 
@@ -716,32 +716,51 @@
             let dailyCalories, dailyProtein, dailyFat, dailyCarbs;
             
             if (goals === 'weight-loss') {
-                // Match Fuelin's targets exactly
-                dailyProtein = Math.round(bodyWeight * 0.78); // ~150g at 192lbs
-                dailyFat = Math.round(bodyWeight * 0.41); // ~79g at 192lbs
+                // Check if this is a race day (high duration suggests race)
+                const isRaceDay = duration > 180; // 3+ hours suggests race
                 
-                // Carb formula based on workout intensity
-                if (workoutType === 'none') {
-                    dailyCarbs = Math.round(bodyWeight * 0.885); // Rest day ~170g at 192lbs
+                if (isRaceDay) {
+                    console.log('🏁 RACE DAY NUTRITION CALCULATION 🏁');
+                    
+                    // Race-specific macro calculations based on duration
+                    if (duration >= 240) { // 4+ hours = ultra-endurance
+                        dailyProtein = Math.round(bodyWeight * 0.94); // ~180g at 192lbs
+                        dailyFat = Math.round(bodyWeight * 0.78); // ~150g at 192lbs  
+                        dailyCarbs = Math.round(bodyWeight * 3.9); // ~745g at 192lbs
+                    } else { // 3-4 hours = long race
+                        dailyProtein = Math.round(bodyWeight * 0.86); // ~165g at 192lbs
+                        dailyFat = Math.round(bodyWeight * 0.65); // ~125g at 192lbs
+                        dailyCarbs = Math.round(bodyWeight * 3.0); // ~575g at 192lbs
+                    }
+                    
                 } else {
-                    // Base carbs by intensity level
-                    const intensityMultipliers = {
-                        'easy': 1.0,      // Easy recovery
-                        'endurance': 1.1, // Zone 2 (~211g at 192lbs)
-                        'tempo': 1.6,     // Zone 3 (~307g at 192lbs)
-                        'threshold': 1.7, // Zone 4
-                        'intervals': 1.8, // Zone 5
-                        'strength': 1.2   // Strength training
-                    };
+                    // Regular training day calculations
+                    dailyProtein = Math.round(bodyWeight * 0.78); // ~150g at 192lbs
+                    dailyFat = Math.round(bodyWeight * 0.41); // ~79g at 192lbs
                     
-                    const baseCarbs = bodyWeight * intensityMultipliers[workoutType];
-                    
-                    // Adjust for duration
-                    let durationAdjustment = 1.0;
-                    if (duration > 120) durationAdjustment = 1.1;      // +10% for 2+ hours
-                    else if (duration > 90) durationAdjustment = 1.05; // +5% for 90+ min
-                    
-                    dailyCarbs = Math.round(baseCarbs * durationAdjustment);
+                    // Carb formula based on workout intensity
+                    if (workoutType === 'none') {
+                        dailyCarbs = Math.round(bodyWeight * 0.885); // Rest day ~170g at 192lbs
+                    } else {
+                        // Base carbs by intensity level
+                        const intensityMultipliers = {
+                            'easy': 1.0,      // Easy recovery
+                            'endurance': 1.1, // Zone 2 (~211g at 192lbs)
+                            'tempo': 1.6,     // Zone 3 (~307g at 192lbs)
+                            'threshold': 1.7, // Zone 4
+                            'intervals': 1.8, // Zone 5
+                            'strength': 1.2   // Strength training
+                        };
+                        
+                        const baseCarbs = bodyWeight * intensityMultipliers[workoutType];
+                        
+                        // Adjust for duration
+                        let durationAdjustment = 1.0;
+                        if (duration > 120) durationAdjustment = 1.1;      // +10% for 2+ hours
+                        else if (duration > 90) durationAdjustment = 1.05; // +5% for 90+ min
+                        
+                        dailyCarbs = Math.round(baseCarbs * durationAdjustment);
+                    }
                 }
                 
                 // Calculate total calories from macros
