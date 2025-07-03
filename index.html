@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.6 - Debug multiple workouts
+                Version 2.7 - Super detailed debug logging
             </div>
         </div>
 
@@ -371,7 +371,22 @@
                 const data = await response.json();
                 const activities = data.events || [];
                 
-                console.log('API returned activities:', activities); // Debug log
+                console.log('Raw API response:', data);
+                console.log('Activities array length:', activities.length);
+                console.log('All activities:', activities);
+                
+                // Log each activity individually
+                activities.forEach((activity, index) => {
+                    console.log(`Activity ${index}:`, {
+                        id: activity.id,
+                        name: activity.name,
+                        type: activity.type,
+                        category: activity.category,
+                        moving_time: activity.moving_time,
+                        duration: activity.duration,
+                        start_date: activity.start_date_local
+                    });
+                });
                 
                 if (activities.length === 0) {
                     showStatus('No workouts found for this date - showing rest day nutrition', 'warning');
