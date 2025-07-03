@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.8 - Fixed multiple workout combination
+                Version 2.9 - OBVIOUS DEBUG MARKER
             </div>
         </div>
 
@@ -340,6 +340,8 @@
         document.getElementById('workoutDate').valueAsDate = new Date();
         
         async function loadWorkoutData() {
+            console.log('🔥 VERSION 2.8 FUNCTION CALLED - NEW CODE RUNNING 🔥');
+            
             const apiKey = document.getElementById('apiKey').value;
             const workoutDate = document.getElementById('workoutDate').value;
             const statusDiv = document.getElementById('workoutStatus');
