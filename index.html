@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.2 - Fixed rest day carbs (170g at 192lbs)
+                Version 2.3 - Intensity-based carb calculations
             </div>
         </div>
 
@@ -459,11 +459,28 @@
                 dailyProtein = Math.round(bodyWeight * 0.78); // ~148g at 190lbs
                 dailyFat = Math.round(bodyWeight * 0.41); // ~78g at 190lbs
                 
-                // Simple carb formula based on training
+                // Carb formula based on workout intensity AND duration
                 if (workoutType === 'none') {
                     dailyCarbs = Math.round(bodyWeight * 0.885); // Rest day ~170g at 192lbs
                 } else {
-                    dailyCarbs = Math.round(bodyWeight * 1.6); // Training day ~304g at 190lbs
+                    // Base carbs by intensity level
+                    const intensityMultipliers = {
+                        'easy': 1.0,      // Easy recovery
+                        'endurance': 1.1, // Zone 2 (~210g at 190lbs)
+                        'tempo': 1.6,     // Zone 3 (~304g at 190lbs)
+                        'threshold': 1.7, // Zone 4
+                        'intervals': 1.8, // Zone 5
+                        'strength': 1.2   // Strength training
+                    };
+                    
+                    const baseCarbs = bodyWeight * intensityMultipliers[workoutType];
+                    
+                    // Adjust slightly for duration (longer workouts need more carbs)
+                    let durationAdjustment = 1.0;
+                    if (duration > 120) durationAdjustment = 1.1;      // +10% for 2+ hours
+                    else if (duration > 90) durationAdjustment = 1.05; // +5% for 90+ min
+                    
+                    dailyCarbs = Math.round(baseCarbs * durationAdjustment);
                 }
                 
                 // Calculate total calories from macros
