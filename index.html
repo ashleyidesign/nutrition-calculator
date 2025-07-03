@@ -9,7 +9,8 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
+        // Set today's date by default
+        document.getElementById('workoutDate').valueAsDate = new Date();
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -192,6 +193,44 @@
             display: none;
         }
 
+        .race-override {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .race-override h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .race-override .race-workout {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ff6b35;
+        }
+
+        .race-override .race-workout h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .race-override input {
+            margin-bottom: 10px;
+        }
+
+        .race-override .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -209,7 +248,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 3.1 - Fixed strength endurance mapping
+                Version 3.2 - Race Detection & Duration Override
             </div>
         </div>
 
@@ -231,6 +270,16 @@
                 <button class="button secondary" onclick="toggleManualEntry()">Manual Entry</button>
                 
                 <div id="workoutStatus"></div>
+                
+                <div class="race-override" id="raceOverride">
+                    <h3>🏁 Race Detected!</h3>
+                    <p>We found a race in your schedule. Please verify the details and adjust if needed:</p>
+                    <div id="raceWorkouts"></div>
+                    <div class="button-group">
+                        <button class="button" onclick="applyRaceOverride()">Calculate Race Nutrition</button>
+                        <button class="button secondary" onclick="cancelRaceOverride()">Cancel</button>
+                    </div>
+                </div>
             </div>
 
             <div class="section">
@@ -336,8 +385,155 @@
     </div>
 
     <script>
-        // Set today's date by default
-        document.getElementById('workoutDate').valueAsDate = new Date();
+        let currentWorkouts = [];
+        
+        function showRaceOverride(workouts) {
+            currentWorkouts = workouts;
+            const raceOverride = document.getElementById('raceOverride');
+            const raceWorkoutsDiv = document.getElementById('raceWorkouts');
+            
+            raceWorkoutsDiv.innerHTML = '';
+            
+            workouts.forEach((workout, index) => {
+                const name = (workout.name || '').toLowerCase();
+                const isRace = name.includes('race') || name.includes('triathlon') || name.includes('marathon');
+                const currentDuration = Math.round((workout.moving_time || workout.duration || 3600) / 60);
+                
+                const workoutDiv = document.createElement('div');
+                workoutDiv.className = 'race-workout';
+                workoutDiv.innerHTML = `
+                    <h4>${workout.name || workout.type} ${isRace ? '🏁' : ''}</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Duration (minutes)</label>
+                            <input type="number" id="race-duration-${index}" value="${currentDuration}" min="1" max="720">
+                        </div>
+                        <div class="form-group">
+                            <label>Intensity</label>
+                            <select id="race-intensity-${index}">
+                                <option value="easy">Easy/Recovery</option>
+                                <option value="endurance" ${isRace ? 'selected' : ''}>Endurance (Race Pace)</option>
+                                <option value="tempo">Tempo</option>
+                                <option value="threshold">Threshold</option>
+                                <option value="intervals">Intervals</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+                raceWorkoutsDiv.appendChild(workoutDiv);
+            });
+            
+            raceOverride.style.display = 'block';
+            raceOverride.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function applyRaceOverride() {
+            let combinedDuration = 0;
+            let highestIntensity = 'easy';
+            let workoutDescriptions = [];
+            
+            const intensityRanking = {
+                'easy': 1,
+                'endurance': 2,
+                'tempo': 3,
+                'threshold': 4,
+                'intervals': 5
+            };
+            
+            currentWorkouts.forEach((workout, index) => {
+                const duration = parseInt(document.getElementById(`race-duration-${index}`).value);
+                const intensity = document.getElementById(`race-intensity-${index}`).value;
+                
+                combinedDuration += duration;
+                workoutDescriptions.push(`${workout.type} (${duration}min, ${intensity})`);
+                
+                if (intensityRanking[intensity] > intensityRanking[highestIntensity]) {
+                    highestIntensity = intensity;
+                }
+            });
+            
+            console.log(`🏁 Race Override Applied: ${combinedDuration}min at ${highestIntensity}`);
+            
+            // Set the form values
+            document.getElementById('workoutType').value = highestIntensity;
+            document.getElementById('duration').value = combinedDuration;
+            
+            // Hide race override and show results
+            document.getElementById('raceOverride').style.display = 'none';
+            document.getElementById('manualSection').style.display = 'none';
+            document.querySelector('button.secondary').textContent = 'Show Manual Override';
+            
+            // Calculate nutrition with race settings
+            calculateNutrition();
+            
+            showStatus(`Race Day: ${workoutDescriptions.join(' + ')} - Total: ${combinedDuration}min at ${highestIntensity.toUpperCase()}`, 'success');
+        }
+        
+        function cancelRaceOverride() {
+            document.getElementById('raceOverride').style.display = 'none';
+            
+            // Process normally without race override
+            processWorkoutsNormally(currentWorkouts);
+        }
+        
+        function processWorkoutsNormally(workouts) {
+            if (workouts.length > 1) {
+                console.log(`Found ${workouts.length} workouts - combining them!`);
+                
+                // Multiple workouts - combine them
+                let combinedDuration = 0;
+                let highestIntensity = 'easy';
+                let workoutDescriptions = [];
+                
+                const intensityRanking = {
+                    'easy': 1,
+                    'endurance': 2,
+                    'tempo': 3,
+                    'threshold': 4,
+                    'intervals': 5,
+                    'strength': 2
+                };
+                
+                workouts.forEach((workout, index) => {
+                    const workoutType = mapWorkoutType(workout);
+                    const durationSeconds = workout.moving_time || workout.duration || 3600;
+                    const durationMinutes = Math.round(durationSeconds / 60);
+                    
+                    console.log(`Workout ${index + 1}: ${workout.type} - ${durationMinutes}min - ${workoutType}`);
+                    
+                    combinedDuration += durationMinutes;
+                    workoutDescriptions.push(`${workout.type} (${durationMinutes}min)`);
+                    
+                    if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
+                        highestIntensity = workoutType;
+                    }
+                });
+                
+                console.log(`Combined: ${combinedDuration}min at ${highestIntensity} intensity`);
+                
+                document.getElementById('workoutType').value = highestIntensity;
+                document.getElementById('duration').value = combinedDuration;
+                
+                showStatus(`Loaded ${workouts.length} workouts: ${workoutDescriptions.join(' + ')} - Total: ${combinedDuration}min at ${highestIntensity.toUpperCase()}`, 'success');
+                
+            } else {
+                // Single workout
+                const workout = workouts[0];
+                const workoutType = mapWorkoutType(workout);
+                const durationSeconds = workout.moving_time || workout.duration || 3600;
+                const durationMinutes = Math.round(durationSeconds / 60);
+                
+                document.getElementById('workoutType').value = workoutType;
+                document.getElementById('duration').value = durationMinutes;
+                
+                showStatus(`Loaded: ${workout.name || workout.type} - ${durationMinutes} minutes - ${workoutType.toUpperCase()}`, 'success');
+            }
+            
+            // Hide manual section and calculate nutrition
+            document.getElementById('manualSection').style.display = 'none';
+            document.querySelector('button.secondary').textContent = 'Show Manual Override';
+            calculateNutrition();
+        }
         
         async function loadWorkoutData() {
             console.log('🔥 VERSION 3.0 - MULTIPLE WORKOUTS FIXED! 🔥');
@@ -391,8 +587,23 @@
                 
                 console.log('🎯 PROCESSING MULTIPLE WORKOUTS 🎯');
                 
-                // Take up to 3 workouts
+                // Take up to 3 workouts and check for races
                 const workouts = activities.slice(0, 3);
+                let hasRace = false;
+                
+                // Check if any workout is a race
+                workouts.forEach(workout => {
+                    const name = (workout.name || '').toLowerCase();
+                    if (name.includes('race') || name.includes('triathlon') || name.includes('marathon')) {
+                        hasRace = true;
+                    }
+                });
+                
+                if (hasRace) {
+                    console.log('🏁 RACE DETECTED! 🏁');
+                    showRaceOverride(workouts);
+                    return;
+                }
                 
                 if (workouts.length > 1) {
                     console.log(`Found ${workouts.length} workouts - combining them!`);
