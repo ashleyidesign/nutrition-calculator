@@ -393,12 +393,12 @@
                 document.getElementById('workoutType').value = workoutType;
                 document.getElementById('duration').value = duration;
                 
+                // Calculate nutrition with loaded data
+                calculateNutrition();
+                
                 // Hide manual section since we loaded automatically
                 document.getElementById('manualSection').style.display = 'none';
                 document.querySelector('button.secondary').textContent = 'Show Manual Override';
-                
-                // Calculate nutrition with loaded data
-                calculateNutrition();
                 
                 showStatus(`Loaded: ${workout.name || workout.type} - ${duration} minutes - ${workoutType.toUpperCase()}`, 'success');
                 
