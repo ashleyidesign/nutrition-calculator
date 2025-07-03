@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 3.0 - FIXED MULTIPLE WORKOUTS
+                Version 3.1 - Fixed strength endurance mapping
             </div>
         </div>
 
@@ -464,6 +464,7 @@
             if (name.includes('tempo') || name.includes('zone 3')) return 'tempo';
             if (name.includes('threshold') || name.includes('zone 4')) return 'threshold';
             if (name.includes('interval') || name.includes('zone 5')) return 'intervals';
+            if (name.includes('strength endurance') || name.includes('low cadence')) return 'intervals'; // This is your Z5 workout
             if (name.includes('strength') || type.includes('strength')) return 'strength';
             
             return 'endurance';
