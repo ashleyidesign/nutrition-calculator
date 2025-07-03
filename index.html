@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.0 - Fixed calculations
+                Version 2.2 - Fixed rest day carbs (170g at 192lbs)
             </div>
         </div>
 
@@ -372,7 +372,16 @@
                 const activities = data.events || [];
                 
                 if (activities.length === 0) {
-                    showStatus('No workouts found for this date', 'warning');
+                    showStatus('No workouts found for this date - showing rest day nutrition', 'warning');
+                    
+                    // Set as rest day and calculate nutrition
+                    document.getElementById('workoutType').value = 'none';
+                    document.getElementById('duration').value = 0;
+                    document.getElementById('manualSection').style.display = 'none';
+                    document.querySelector('button.secondary').textContent = 'Show Manual Override';
+                    
+                    // Calculate rest day nutrition
+                    calculateNutrition();
                     return;
                 }
                 
@@ -452,7 +461,7 @@
                 
                 // Simple carb formula based on training
                 if (workoutType === 'none') {
-                    dailyCarbs = Math.round(bodyWeight * 1.0); // Rest day
+                    dailyCarbs = Math.round(bodyWeight * 0.885); // Rest day ~170g at 192lbs
                 } else {
                     dailyCarbs = Math.round(bodyWeight * 1.6); // Training day ~304g at 190lbs
                 }
@@ -536,6 +545,14 @@
                     calculateNutrition();
                 }
             });
+        });
+        
+        // Auto-calculate rest day nutrition when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default to rest day and calculate
+            document.getElementById('workoutType').value = 'none';
+            document.getElementById('duration').value = 0;
+            calculateNutrition();
         });
     </script>
 </body>
