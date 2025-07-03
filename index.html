@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.9 - OBVIOUS DEBUG MARKER
+                Version 2.10 - More debug markers
             </div>
         </div>
 
@@ -389,6 +389,9 @@
                         start_date: activity.start_date_local
                     });
                 });
+                
+                console.log('🚨 ABOUT TO PROCESS WORKOUTS 🚨');
+                console.log('Activities length:', activities.length);
                 
                 if (activities.length === 0) {
                     showStatus('No workouts found for this date - showing rest day nutrition', 'warning');
