@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.12 - MAXIMUM DEBUG MODE
+                Version 3.0 - FIXED MULTIPLE WORKOUTS
             </div>
         </div>
 
@@ -340,7 +340,7 @@
         document.getElementById('workoutDate').valueAsDate = new Date();
         
         async function loadWorkoutData() {
-            console.log('🔥 VERSION 2.8 FUNCTION CALLED - NEW CODE RUNNING 🔥');
+            console.log('🔥 VERSION 3.0 - MULTIPLE WORKOUTS FIXED! 🔥');
             
             const apiKey = document.getElementById('apiKey').value;
             const workoutDate = document.getElementById('workoutDate').value;
@@ -373,28 +373,9 @@
                 const data = await response.json();
                 const activities = data.events || [];
                 
-                console.log('Raw API response:', data);
-                console.log('Activities array length:', activities.length);
-                console.log('All activities:', activities);
-                
-                // Log each activity individually
-                activities.forEach((activity, index) => {
-                    console.log(`Activity ${index}:`, {
-                        id: activity.id,
-                        name: activity.name,
-                        type: activity.type,
-                        category: activity.category,
-                        moving_time: activity.moving_time,
-                        duration: activity.duration,
-                        start_date: activity.start_date_local
-                    });
-                });
-                
-                console.log('🚨 ABOUT TO PROCESS WORKOUTS 🚨');
-                console.log('Activities length:', activities.length);
+                console.log('Found activities:', activities.length);
                 
                 if (activities.length === 0) {
-                    console.log('❌ NO ACTIVITIES FOUND - SHOWING REST DAY');
                     showStatus('No workouts found for this date - showing rest day nutrition', 'warning');
                     
                     // Set as rest day and calculate nutrition
@@ -408,24 +389,67 @@
                     return;
                 }
                 
-                console.log('✅ ACTIVITIES FOUND - PROCEEDING TO WORKOUT PROCESSING');
+                console.log('🎯 PROCESSING MULTIPLE WORKOUTS 🎯');
                 
-                // Use the first workout
-                const workout = activities[0];
-                const workoutType = mapWorkoutType(workout);
-                const duration = Math.round((workout.moving_time || 3600) / 60);
+                // Take up to 3 workouts
+                const workouts = activities.slice(0, 3);
                 
-                document.getElementById('workoutType').value = workoutType;
-                document.getElementById('duration').value = duration;
+                if (workouts.length > 1) {
+                    console.log(`Found ${workouts.length} workouts - combining them!`);
+                    
+                    // Multiple workouts - combine them
+                    let combinedDuration = 0;
+                    let highestIntensity = 'easy';
+                    let workoutDescriptions = [];
+                    
+                    const intensityRanking = {
+                        'easy': 1,
+                        'endurance': 2,
+                        'tempo': 3,
+                        'threshold': 4,
+                        'intervals': 5,
+                        'strength': 2
+                    };
+                    
+                    workouts.forEach((workout, index) => {
+                        const workoutType = mapWorkoutType(workout);
+                        const durationSeconds = workout.moving_time || workout.duration || 3600;
+                        const durationMinutes = Math.round(durationSeconds / 60);
+                        
+                        console.log(`Workout ${index + 1}: ${workout.type} - ${durationMinutes}min - ${workoutType}`);
+                        
+                        combinedDuration += durationMinutes;
+                        workoutDescriptions.push(`${workout.type} (${durationMinutes}min)`);
+                        
+                        if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
+                            highestIntensity = workoutType;
+                        }
+                    });
+                    
+                    console.log(`Combined: ${combinedDuration}min at ${highestIntensity} intensity`);
+                    
+                    document.getElementById('workoutType').value = highestIntensity;
+                    document.getElementById('duration').value = combinedDuration;
+                    
+                    showStatus(`Loaded ${workouts.length} workouts: ${workoutDescriptions.join(' + ')} - Total: ${combinedDuration}min at ${highestIntensity.toUpperCase()}`, 'success');
+                    
+                } else {
+                    // Single workout
+                    const workout = workouts[0];
+                    const workoutType = mapWorkoutType(workout);
+                    const durationSeconds = workout.moving_time || workout.duration || 3600;
+                    const durationMinutes = Math.round(durationSeconds / 60);
+                    
+                    document.getElementById('workoutType').value = workoutType;
+                    document.getElementById('duration').value = durationMinutes;
+                    
+                    showStatus(`Loaded: ${workout.name || workout.type} - ${durationMinutes} minutes - ${workoutType.toUpperCase()}`, 'success');
+                }
                 
-                // Calculate nutrition with loaded data
-                calculateNutrition();
-                
-                // Hide manual section since we loaded automatically
+                // Hide manual section and calculate nutrition
                 document.getElementById('manualSection').style.display = 'none';
                 document.querySelector('button.secondary').textContent = 'Show Manual Override';
-                
-                showStatus(`Loaded: ${workout.name || workout.type} - ${duration} minutes - ${workoutType.toUpperCase()}`, 'success');
+                calculateNutrition();
                 
             } catch (error) {
                 showStatus(`Error: ${error.message}`, 'error');
@@ -440,7 +464,7 @@
             if (name.includes('tempo') || name.includes('zone 3')) return 'tempo';
             if (name.includes('threshold') || name.includes('zone 4')) return 'threshold';
             if (name.includes('interval') || name.includes('zone 5')) return 'intervals';
-            if (type.includes('strength')) return 'strength';
+            if (name.includes('strength') || type.includes('strength')) return 'strength';
             
             return 'endurance';
         }
@@ -481,18 +505,18 @@
             
             if (goals === 'weight-loss') {
                 // Match Fuelin's targets exactly
-                dailyProtein = Math.round(bodyWeight * 0.78); // ~148g at 190lbs
-                dailyFat = Math.round(bodyWeight * 0.41); // ~78g at 190lbs
+                dailyProtein = Math.round(bodyWeight * 0.78); // ~150g at 192lbs
+                dailyFat = Math.round(bodyWeight * 0.41); // ~79g at 192lbs
                 
-                // Carb formula based on workout intensity AND duration
+                // Carb formula based on workout intensity
                 if (workoutType === 'none') {
                     dailyCarbs = Math.round(bodyWeight * 0.885); // Rest day ~170g at 192lbs
                 } else {
                     // Base carbs by intensity level
                     const intensityMultipliers = {
                         'easy': 1.0,      // Easy recovery
-                        'endurance': 1.1, // Zone 2 (~210g at 190lbs)
-                        'tempo': 1.6,     // Zone 3 (~304g at 190lbs)
+                        'endurance': 1.1, // Zone 2 (~211g at 192lbs)
+                        'tempo': 1.6,     // Zone 3 (~307g at 192lbs)
                         'threshold': 1.7, // Zone 4
                         'intervals': 1.8, // Zone 5
                         'strength': 1.2   // Strength training
@@ -500,7 +524,7 @@
                     
                     const baseCarbs = bodyWeight * intensityMultipliers[workoutType];
                     
-                    // Adjust slightly for duration (longer workouts need more carbs)
+                    // Adjust for duration
                     let durationAdjustment = 1.0;
                     if (duration > 120) durationAdjustment = 1.1;      // +10% for 2+ hours
                     else if (duration > 90) durationAdjustment = 1.05; // +5% for 90+ min
