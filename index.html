@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.10 - More debug markers
+                Version 2.11 - Debug the logic gap
             </div>
         </div>
 
@@ -394,6 +394,7 @@
                 console.log('Activities length:', activities.length);
                 
                 if (activities.length === 0) {
+                    console.log('❌ NO ACTIVITIES FOUND - SHOWING REST DAY');
                     showStatus('No workouts found for this date - showing rest day nutrition', 'warning');
                     
                     // Set as rest day and calculate nutrition
@@ -406,6 +407,8 @@
                     calculateNutrition();
                     return;
                 }
+                
+                console.log('✅ ACTIVITIES FOUND - PROCEEDING TO WORKOUT PROCESSING');
                 
                 // Use the first workout
                 const workout = activities[0];
