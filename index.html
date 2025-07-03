@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 2.3 - Intensity-based carb calculations
+                Version 2.5 - Fixed multiple workouts + 192lbs default
             </div>
         </div>
 
@@ -239,7 +239,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="bodyWeight">Body Weight (lbs)</label>
-                        <input type="number" id="bodyWeight" min="100" max="250" value="190">
+                        <input type="number" id="bodyWeight" min="100" max="250" value="192">
                     </div>
                     <div class="form-group">
                         <label for="goals">Current Goals</label>
@@ -370,6 +370,8 @@
                 
                 const data = await response.json();
                 const activities = data.events || [];
+                
+                console.log('API returned activities:', activities); // Debug log
                 
                 if (activities.length === 0) {
                     showStatus('No workouts found for this date - showing rest day nutrition', 'warning');
