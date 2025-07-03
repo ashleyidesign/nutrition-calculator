@@ -38,17 +38,9 @@ export default async function handler(req, res) {
     
     const events = await response.json();
     
-    // Filter for workouts only
-    const workouts = events.filter(event => 
-      event.category === 'WORKOUT' || 
-      event.type === 'Ride' || 
-      event.type === 'Run' || 
-      event.type === 'Swim'
-    );
-    
     return res.status(200).json({ 
-      events: workouts,
-      total: workouts.length 
+      events: events,
+      total: events.length 
     });
     
   } catch (error) {
