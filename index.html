@@ -381,11 +381,13 @@
                 document.getElementById('workoutType').value = workoutType;
                 document.getElementById('duration').value = duration;
                 
-                // Show manual section and calculate
-                document.getElementById('manualSection').style.display = 'block';
+                // Hide manual section since we loaded automatically
+                document.getElementById('manualSection').style.display = 'none';
+                document.querySelector('button.secondary').textContent = 'Show Manual Override';
+                
                 calculateNutrition();
                 
-                showStatus(`Loaded: ${workout.name || workout.type} - ${duration} minutes`, 'success');
+                showStatus(`Loaded: ${workout.name || workout.type} - ${duration} minutes - ${workoutType.toUpperCase()}`, 'success');
                 
             } catch (error) {
                 showStatus(`Error: ${error.message}`, 'error');
