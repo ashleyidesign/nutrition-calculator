@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 1.8 - Fixed auto-loaded workout calculation
+                Version 2.0 - Fixed calculations
             </div>
         </div>
 
@@ -388,7 +388,7 @@
                 document.getElementById('manualSection').style.display = 'none';
                 document.querySelector('button.secondary').textContent = 'Show Manual Override';
                 
-                // Call the NEW calculation function
+                // Calculate nutrition with loaded data
                 calculateNutrition();
                 
                 showStatus(`Loaded: ${workout.name || workout.type} - ${duration} minutes - ${workoutType.toUpperCase()}`, 'success');
@@ -441,56 +441,44 @@
             const workoutType = document.getElementById('workoutType').value;
             const duration = parseInt(document.getElementById('duration').value);
             
-            const bodyWeightKg = bodyWeight * 0.453592;
-            
-            // Female BMR calculation
-            const age = 38;
-            const height = 165;
-            const bmr = (10 * bodyWeightKg) + (6.25 * height) - (5 * age) - 161;
-            
-            const baseActivityFactor = 1.2;
-            let workoutCalories = 0;
-            
-            const caloriesBurnedPerHour = {
-                'none': 0,
-                'easy': bodyWeight * 4,
-                'endurance': bodyWeight * 6,
-                'tempo': bodyWeight * 8,
-                'threshold': bodyWeight * 10,
-                'intervals': bodyWeight * 12,
-                'strength': bodyWeight * 5
-            };
-            
-            if (workoutType !== 'none' && duration > 0) {
-                workoutCalories = Math.round(caloriesBurnedPerHour[workoutType] * (duration / 60));
-            }
+            console.log(`Calculating: ${bodyWeight}lbs, ${goals}, ${workoutType}, ${duration}min`);
             
             let dailyCalories, dailyProtein, dailyFat, dailyCarbs;
             
             if (goals === 'weight-loss') {
-                dailyCalories = Math.round(bmr * 1.29 + (workoutCalories * 0.75));
-                dailyProtein = Math.round(bodyWeight * 0.78);
-                dailyFat = Math.round(bodyWeight * 0.41);
+                // Match Fuelin's targets exactly
+                dailyProtein = Math.round(bodyWeight * 0.78); // ~148g at 190lbs
+                dailyFat = Math.round(bodyWeight * 0.41); // ~78g at 190lbs
+                
+                // Simple carb formula based on training
+                if (workoutType === 'none') {
+                    dailyCarbs = Math.round(bodyWeight * 1.0); // Rest day
+                } else {
+                    dailyCarbs = Math.round(bodyWeight * 1.6); // Training day ~304g at 190lbs
+                }
+                
+                // Calculate total calories from macros
+                dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
+                
             } else if (goals === 'maintenance') {
-                dailyCalories = Math.round(bmr * 1.35 + workoutCalories);
+                const bodyWeightKg = bodyWeight * 0.453592;
                 dailyProtein = Math.round(bodyWeightKg * 1.6);
                 dailyFat = Math.round(bodyWeight * 0.5);
-            } else {
-                dailyCalories = Math.round(bmr * 1.4 + (workoutCalories * 1.1));
+                dailyCarbs = Math.round(bodyWeight * 1.8);
+                dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
+                
+            } else { // performance
+                const bodyWeightKg = bodyWeight * 0.453592;
                 dailyProtein = Math.round(bodyWeightKg * 1.4);
                 dailyFat = Math.round(bodyWeight * 0.6);
+                dailyCarbs = Math.round(bodyWeight * 2.0);
+                dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
             }
             
-            const proteinCalories = dailyProtein * 4;
-            const fatCalories = dailyFat * 9;
-            const carbCalories = dailyCalories - proteinCalories - fatCalories;
-            dailyCarbs = Math.round(carbCalories / 4);
+            console.log(`Results: ${dailyCalories} cal, ${dailyProtein}p, ${dailyCarbs}c, ${dailyFat}f`);
             
-            if (dailyCarbs < 100) {
-                dailyCarbs = 100;
-                dailyCalories = proteinCalories + fatCalories + (dailyCarbs * 4);
-            }
-            
+            // Workout fueling calculations
+            const bodyWeightKg = bodyWeight * 0.453592;
             let preWorkoutCarbs = 0;
             let duringWorkoutCarbs = 0;
             let postWorkoutCarbs = 0;
