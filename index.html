@@ -209,7 +209,7 @@
             <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
             <p>Daily macros + workout fueling recommendations</p>
             <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 1.7 - HARDCODED TEST
+                Version 1.8 - Fixed auto-loaded workout calculation
             </div>
         </div>
 
@@ -388,6 +388,7 @@
                 document.getElementById('manualSection').style.display = 'none';
                 document.querySelector('button.secondary').textContent = 'Show Manual Override';
                 
+                // Call the NEW calculation function
                 calculateNutrition();
                 
                 showStatus(`Loaded: ${workout.name || workout.type} - ${duration} minutes - ${workoutType.toUpperCase()}`, 'success');
