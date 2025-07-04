@@ -305,24 +305,41 @@ const calendarManager = {
             return { raceInfo: raceEvent, isCarboLoading: false };
         }
         
-        // Check if this is within carb-loading window (3-7 days before A or B race)
-        const upcomingRaces = this.findUpcomingRaces(date, 7);
+        // Check if this is within carb-loading window (1-3 days before A or B race)
+        const upcomingRaces = this.findUpcomingRaces(date, 5); // Look ahead 5 days to find races
         const importantRace = upcomingRaces.find(race => 
             race.category === 'RACE_A' || race.category === 'RACE_B'
         );
         
         if (importantRace) {
-            const raceDate = new Date(importantRace.start_date_local.split('T')[0]);
-            const daysUntilRace = this.daysBetween(date, raceDate);
+            // FIXED: More robust date parsing
+            const raceDateStr = importantRace.start_date_local.split('T')[0];
+            const raceDate = new Date(raceDateStr + 'T12:00:00'); // Add noon time to avoid timezone issues
             
-            console.log(`Checking carb loading for ${this.formatDate(date)}: Race on ${this.formatDate(raceDate)}, ${daysUntilRace} days until race`);
+            // FIXED: More accurate day calculation
+            const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
             
-            if (daysUntilRace >= 3 && daysUntilRace <= 7) {
+            console.log(`Checking carb loading for ${this.formatDate(date)}: Race "${importantRace.name}" on ${this.formatDate(raceDate)}, ${daysUntilRace} days until race`);
+            
+            // CORRECTED: Carb loading window is 1-3 days before race (9th, 10th, 11th for race on 12th)
+            if (daysUntilRace >= 1 && daysUntilRace <= 3) {
                 return { raceInfo: null, isCarboLoading: true };
             }
         }
         
         return { raceInfo: null, isCarboLoading: false };
+    },
+    
+    // NEW: More accurate day calculation function
+    calculateDaysUntilRace(fromDate, raceDate) {
+        // Create new dates at start of day to avoid time zone issues
+        const from = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+        const race = new Date(raceDate.getFullYear(), raceDate.getMonth(), raceDate.getDate());
+        
+        const timeDiff = race.getTime() - from.getTime();
+        const daysDiff = Math.round(timeDiff / (1000 * 3600 * 24));
+        
+        return daysDiff;
     },
     
     findUpcomingRaces(fromDate, daysAhead) {
@@ -332,8 +349,16 @@ const calendarManager = {
         return this.events.filter(event => {
             if (!event.category || !event.category.startsWith('RACE_')) return false;
             
-            const eventDate = new Date(event.start_date_local.split('T')[0]);
-            return eventDate > fromDate && eventDate <= endDate;
+            // FIXED: Better date parsing
+            const eventDateStr = event.start_date_local.split('T')[0];
+            const eventDate = new Date(eventDateStr + 'T12:00:00'); // Add noon to avoid timezone issues
+            
+            // Check if event date is within the window
+            const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+            const fromDateOnly = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+            const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+            
+            return eventDateOnly > fromDateOnly && eventDateOnly <= endDateOnly;
         });
     },
     
@@ -422,17 +447,19 @@ const calendarManager = {
         
         // Adjust for carb loading
         if (isCarboLoading) {
-            const upcomingRaces = this.findUpcomingRaces(date, 7);
+            const upcomingRaces = this.findUpcomingRaces(date, 5);
             const importantRace = upcomingRaces.find(race => 
                 race.category === 'RACE_A' || race.category === 'RACE_B'
             );
             
             if (importantRace) {
-                const daysUntilRace = this.daysBetween(date, new Date(importantRace.start_date_local));
+                const raceDateStr = importantRace.start_date_local.split('T')[0];
+                const raceDate = new Date(raceDateStr + 'T12:00:00');
+                const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
                 
                 // Carb loading formula: increase carbs based on days until race
-                if (daysUntilRace >= 3) {
-                    const carbMultiplier = 1.5 + (0.1 * (7 - daysUntilRace)); // 1.5x to 1.9x
+                if (daysUntilRace >= 1 && daysUntilRace <= 3) {
+                    const carbMultiplier = 1.5 + (0.1 * (4 - daysUntilRace)); // 1.6x to 1.8x
                     dailyCarbs = Math.round(dailyCarbs * carbMultiplier);
                     dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
                 }
@@ -496,12 +523,14 @@ const calendarManager = {
             content += `<h3>🏁 ${raceInfo.category.replace('RACE_', '')}-Priority Race Day</h3>`;
         } else if (isCarboLoading) {
             content += '<h3>🍝 Carb Loading Day</h3>';
-            const upcomingRaces = this.findUpcomingRaces(date, 7);
+            const upcomingRaces = this.findUpcomingRaces(date, 5);
             const importantRace = upcomingRaces.find(race => 
                 race.category === 'RACE_A' || race.category === 'RACE_B'
             );
             if (importantRace) {
-                const daysUntilRace = this.daysBetween(date, new Date(importantRace.start_date_local));
+                const raceDateStr = importantRace.start_date_local.split('T')[0];
+                const raceDate = new Date(raceDateStr + 'T12:00:00');
+                const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
                 content += `<p>Preparing for <strong>${importantRace.name}</strong> in ${daysUntilRace} days</p>`;
             }
         } else {
@@ -612,12 +641,13 @@ const calendarManager = {
                date1.getDate() === date2.getDate();
     },
     
+    // UPDATED: daysBetween function for consistency
     daysBetween(startDate, endDate) {
-        // Reset time to avoid timezone issues
+        // Reset time to start of day to avoid timezone issues
         const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
         const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
         
         const timeDiff = end.getTime() - start.getTime();
-        return Math.ceil(timeDiff / (1000 * 3600 * 24));
+        return Math.round(timeDiff / (1000 * 3600 * 24)); // Changed from Math.ceil to Math.round for accuracy
     }
 };
