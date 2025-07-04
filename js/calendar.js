@@ -1,55 +1,76 @@
-// Calendar Management Module
 const calendarManager = {
     currentDate: new Date(),
     events: [],
     bodyWeight: 192,
-    
-    init() {
-        console.log('🗓️ Calendar Manager Initialized');
-        this.updateMonthYear();
+    goals: 'performance',
 
-        const loadButton = document.getElementById('loadCalendarBtn');
-        if (loadButton) {
-            loadButton.addEventListener('click', () => this.loadCalendarData());
+    workoutMapper: {
+        map(workout) {
+            const name = (workout.name || '').toLowerCase();
+            const type = (workout.type || '').toLowerCase();
+            if (name.includes('recovery') || name.includes('easy')) return 'easy';
+            if (name.includes('tempo') || name.includes('zone 3')) return 'tempo';
+            if (name.includes('threshold') || name.includes('zone 4')) return 'threshold';
+            if (name.includes('interval') || name.includes('zone 5')) return 'intervals';
+            if (name.includes('strength endurance') || name.includes('low cadence')) return 'intervals';
+            if (name.includes('strength') || type.includes('strength')) return 'strength';
+            return 'endurance';
         }
     },
     
+    init() {
+        this.updateMonthYear();
+        document.getElementById('loadCalendarBtn')?.addEventListener('click', () => this.loadCalendarData());
+        
+        // *** NEW: Add event listeners for settings changes ***
+        document.getElementById('goals')?.addEventListener('change', () => this.handleSettingsChange());
+        document.getElementById('bodyWeight')?.addEventListener('change', () => this.handleSettingsChange());
+
+        // Modal close functionality
+        document.querySelector('.day-detail-modal')?.addEventListener('click', (e) => this.handleModalClick(e));
+        document.querySelector('.modal-close')?.addEventListener('click', () => this.closeModal());
+    },
+    
+    // *** NEW: Recalculate calendar when settings change ***
+    handleSettingsChange() {
+        this.bodyWeight = parseInt(document.getElementById('bodyWeight').value);
+        this.goals = document.getElementById('goals').value;
+        // Re-render the calendar if data already exists
+        if (this.events.length > 0) {
+            this.renderCalendar();
+        }
+    },
+
     async loadCalendarData() {
         const apiKey = document.getElementById('apiKey').value;
-        const bodyWeight = parseInt(document.getElementById('bodyWeight').value);
+        this.bodyWeight = parseInt(document.getElementById('bodyWeight').value);
+        this.goals = document.getElementById('goals').value;
         
         if (!apiKey) {
             alert('Please enter your API key');
             return;
         }
         
-        this.bodyWeight = bodyWeight;
+        const loadingState = document.getElementById('loadingState');
+        loadingState.innerHTML = '<h3>Loading your nutrition calendar...</h3><p>Fetching workouts and races from Intervals.icu</p>';
         
         try {
-            document.getElementById('loadingState').innerHTML = '<h3>Loading your nutrition calendar...</h3><p>Fetching workouts and races from Intervals.icu</p>';
-            
-            const startDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
-            const endDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 3, 0);
+            const startDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 1);
+            const endDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 2, 0);
             
             const { athleteId } = intervalsAPI.getDefaults();
             this.events = await intervalsAPI.loadWorkoutsForDateRange(apiKey, athleteId, this.formatDate(startDate), this.formatDate(endDate));
             
             console.log(`Loaded ${this.events.length} events for calendar`);
             
-            // Show calendar elements (but let CSS handle responsive display)
-            document.getElementById('loadingState').style.display = 'none';
+            loadingState.style.display = 'none';
             document.getElementById('legend').style.display = 'flex';
             document.getElementById('calendarHeader').style.display = 'flex';
             
-            // *** FIX: REMOVED the two lines below that were forcing both views to display ***
-            // document.getElementById('calendarGrid').style.display = 'grid';
-            // document.getElementById('mobileList').style.display = 'block';
-            
             this.renderCalendar();
-            
         } catch (error) {
             console.error('Calendar loading error:', error);
-            document.getElementById('loadingState').innerHTML = `<h3>Error loading calendar</h3><p>${error.message}</p>`;
+            loadingState.innerHTML = `<h3>Error loading calendar</h3><p>${error.message}</p>`;
         }
     },
     
@@ -59,7 +80,13 @@ const calendarManager = {
         this.updateMonthYear();
         
         const grid = document.getElementById('calendarGrid');
-        grid.querySelectorAll('.calendar-day').forEach(day => day.remove());
+        // Clear old days, keeping header row
+        grid.innerHTML = `
+            <div class="calendar-header-cell">Sun</div><div class="calendar-header-cell">Mon</div>
+            <div class="calendar-header-cell">Tue</div><div class="calendar-header-cell">Wed</div>
+            <div class="calendar-header-cell">Thu</div><div class="calendar-header-cell">Fri</div>
+            <div class="calendar-header-cell">Sat</div>
+        `;
         
         const mobileList = document.getElementById('mobileList');
         mobileList.innerHTML = '';
@@ -84,9 +111,9 @@ const calendarManager = {
             allDays.push({ day, fullDate, isCurrentMonth: true });
         }
         
-        const totalCells = grid.children.length - 7;
-        const cellsNeeded = Math.ceil(totalCells / 7) * 7 - totalCells + 7;
-        
+        const totalCells = startingDayOfWeek + daysInMonth;
+        const cellsNeeded = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+
         for (let day = 1; day <= cellsNeeded; day++) {
             const fullDate = new Date(year, month + 1, day);
             grid.appendChild(this.createDayElement(day, true, fullDate));
@@ -101,11 +128,8 @@ const calendarManager = {
             if (!isCurrentMonth) return;
             
             const dayEvents = this.getEventsForDate(fullDate);
-            const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate, dayEvents);
+            const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate);
             
-            const hasEvents = dayEvents.length > 0 || isCarboLoading || isPostRace || raceInfo;
-            if (!hasEvents) return;
-
             const listItem = document.createElement('div');
             listItem.className = 'day-list-item';
             
@@ -115,37 +139,16 @@ const calendarManager = {
             else if (isCarboLoading) listItem.classList.add('carb-loading');
             else if (isPostRace) listItem.classList.add('post-race'); 
 
-            const header = document.createElement('div');
-            header.className = 'day-list-header';
+            const nutrition = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace);
             
-            const dateDiv = document.createElement('div');
-            dateDiv.className = 'day-list-date';
-            dateDiv.textContent = this.formatDateDisplay(fullDate);
-            
-            const badgeDiv = document.createElement('div');
-            if (raceInfo) badgeDiv.innerHTML = `<span style="background: #f44336; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">RACE</span>`;
-            else if (isCarboLoading) badgeDiv.innerHTML = `<span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">CARB LOAD</span>`;
-            else if (isPostRace) badgeDiv.innerHTML = `<span style="background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">RECOVERY</span>`;
-            
-            header.appendChild(dateDiv);
-            header.appendChild(badgeDiv);
-            listItem.appendChild(header);
-            
-            if (dayEvents.length > 0) {
-                const workoutsDiv = document.createElement('div');
-                workoutsDiv.className = 'day-list-workouts';
-                dayEvents.forEach(event => {
-                    const duration = Math.round((event.moving_time || event.duration || 3600) / 60);
-                    workoutsDiv.innerHTML += `<div><strong>${event.name || event.type}</strong> - ${duration} min</div>`;
-                });
-                listItem.appendChild(workoutsDiv);
-            }
-            
-            const nutrition = this.calculateDayNutrition(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace);
-            const nutritionDiv = document.createElement('div');
-            nutritionDiv.className = 'day-list-nutrition';
-            nutritionDiv.innerHTML = `<strong>${nutrition.calories}</strong> cal • <strong>${nutrition.carbs}g</strong> carbs • <strong>${nutrition.protein}g</strong> protein`;
-            listItem.appendChild(nutritionDiv);
+            listItem.innerHTML = `
+                <div class="day-list-header">
+                    <div class="day-list-date">${this.formatDateDisplay(fullDate)}</div>
+                    <div>${raceInfo ? '🏁 Race' : isCarboLoading ? '🍝 Carb Load' : isPostRace ? '✅ Recovery' : ''}</div>
+                </div>
+                <div class="day-list-workouts">${dayEvents.map(e => `<div><strong>${e.name}</strong> (${Math.round((e.moving_time||0)/60)} min)</div>`).join('') || 'Rest Day'}</div>
+                <div class="day-list-nutrition"><strong>${nutrition.calories}</strong> cal • <strong>${nutrition.carbs}g</strong> C • <strong>${nutrition.protein}g</strong> P</div>
+            `;
             
             listItem.addEventListener('click', () => this.showDayDetails(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace));
             mobileList.appendChild(listItem);
@@ -161,35 +164,25 @@ const calendarManager = {
         if (this.isSameDate(fullDate, today)) dayElement.classList.add('today');
         
         const dayEvents = this.getEventsForDate(fullDate);
-        const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate, dayEvents);
+        const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate);
         
         if (raceInfo) dayElement.classList.add('race-day');
         else if (isCarboLoading) dayElement.classList.add('carb-loading');
         else if (isPostRace) dayElement.classList.add('post-race'); 
         
-        dayElement.innerHTML = `<div class="day-number">${day}</div>`;
-        const dayContent = document.createElement('div');
-        dayContent.className = 'day-content';
-        
-        if (raceInfo) dayContent.innerHTML += `<div class="race-badge">${raceInfo.category.replace('RACE_', '')}</div>`;
-        else if (isCarboLoading) dayContent.innerHTML += `<div class="carb-loading-badge">CARB</div>`;
-        else if (isPostRace) dayContent.innerHTML += `<div class="post-race-badge">RECOVERY</div>`;
+        const nutritionInfo = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace);
 
-        dayEvents.forEach(event => {
-            const workoutItem = document.createElement('div');
-            workoutItem.className = 'workout-item';
-            if (event.category === 'RACE_A') workoutItem.classList.add('race-a');
-            else if (event.category === 'RACE_B') workoutItem.classList.add('race-b');
-            else if (event.category === 'RACE_C') workoutItem.classList.add('race-c');
-            const duration = Math.round((event.moving_time || event.duration || 3600) / 60);
-            workoutItem.textContent = `${event.name || event.type} (${duration}m)`;
-            dayContent.appendChild(workoutItem);
-        });
+        dayElement.innerHTML = `
+            <div class="day-number">${day}</div>
+            <div class="day-content">
+                ${raceInfo ? `<div class="race-badge">${raceInfo.category.replace('RACE_', '')}</div>` : ''}
+                ${isCarboLoading ? `<div class="carb-loading-badge">CARB</div>` : ''}
+                ${isPostRace ? `<div class="post-race-badge">RECOVERY</div>` : ''}
+                ${dayEvents.map(e => `<div class="workout-item">${e.name}</div>`).join('')}
+            </div>
+            <div class="nutrition-info"><strong>${nutritionInfo.calories}</strong> cal / <strong>${nutritionInfo.carbs}g</strong> C</div>
+        `;
         
-        const nutritionInfo = this.calculateDayNutrition(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace);
-        dayContent.innerHTML += `<div class="nutrition-info"><strong>${nutritionInfo.calories}</strong> cal / <strong>${nutritionInfo.carbs}g</strong> C</div>`;
-        
-        dayElement.appendChild(dayContent);
         dayElement.addEventListener('click', () => this.showDayDetails(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace));
         return dayElement;
     },
@@ -199,15 +192,15 @@ const calendarManager = {
         return this.events.filter(event => event.start_date_local.startsWith(dateStr));
     },
 
-    analyzeDayType(date, dayEvents) {
+    analyzeDayType(date) {
+        const dayEvents = this.getEventsForDate(date);
         let raceInfo = dayEvents.find(e => e.category?.startsWith('RACE_')) || null;
         let isCarboLoading = false;
         let isPostRace = false;
 
         const yesterday = new Date(date);
         yesterday.setDate(date.getDate() - 1);
-        const yesterdayEvents = this.getEventsForDate(yesterday);
-        if (yesterdayEvents.some(e => e.category?.startsWith('RACE_'))) {
+        if (this.getEventsForDate(yesterday).some(e => e.category?.startsWith('RACE_'))) {
             isPostRace = true;
             return { raceInfo: null, isCarboLoading: false, isPostRace: true };
         }
@@ -233,8 +226,7 @@ const calendarManager = {
     calculateDaysUntilRace(fromDate, raceDate) {
         const from = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
         const race = new Date(raceDate.getFullYear(), raceDate.getMonth(), raceDate.getDate());
-        const timeDiff = race.getTime() - from.getTime();
-        return Math.round(timeDiff / (1000 * 3600 * 24));
+        return Math.round((race - from) / (1000 * 60 * 60 * 24));
     },
     
     findUpcomingRaces(fromDate, daysAhead) {
@@ -247,17 +239,22 @@ const calendarManager = {
         });
     },
 
-    calculateDayNutrition(date, dayEvents, raceInfo, isCarboLoading, isPostRace) {
-        let totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
+    calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace) {
+        const totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
+        
         let highestIntensity = 'none';
-        if (dayEvents.length > 0) {
-            highestIntensity = 'easy'; 
-        }
-        if (raceInfo) highestIntensity = 'threshold';
-
+        const intensityRanking = { 'none': 0, 'easy': 1, 'strength': 2, 'endurance': 3, 'tempo': 4, 'threshold': 5, 'intervals': 6 };
+        
+        dayEvents.forEach(event => {
+            const workoutType = this.workoutMapper.map(event);
+            if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
+                highestIntensity = workoutType;
+            }
+        });
+        
         return nutritionCalculator.calculate(
             this.bodyWeight, 
-            'performance', 
+            this.goals, 
             highestIntensity, 
             totalDuration,
             !!raceInfo,
@@ -273,28 +270,26 @@ const calendarManager = {
         
         modalDate.textContent = this.formatDateDisplay(date);
         
-        const nutrition = this.calculateDayNutrition(date, dayEvents, raceInfo, isCarboLoading, isPostRace);
+        const nutrition = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace);
         
-        let content = '<div class="section">';
-        if (raceInfo) content += `<h3>🏁 Race Day: ${raceInfo.name}</h3>`;
-        else if (isPostRace) content += '<h3>✅ Post-Race Recovery</h3><p>Focus on replenishing glycogen and repairing muscle.</p>';
-        else if (isCarboLoading) content += '<h3>🍝 Carb Loading Day</h3>';
-        else content += '<h3>📅 Training Day</h3>';
+        let headerText = '📅 Training Day';
+        if (raceInfo) headerText = `🏁 Race Day: ${raceInfo.name}`;
+        else if (isPostRace) headerText = '✅ Post-Race Recovery';
+        else if (isCarboLoading) headerText = '🍝 Carb Loading Day';
         
-        if (dayEvents.length > 0) {
-            content += '<h4>Scheduled Workouts:</h4><ul>';
-            dayEvents.forEach(event => {
-                const duration = Math.round((event.moving_time || event.duration || 3600) / 60);
-                content += `<li><strong>${event.name || event.type}</strong> - ${duration} minutes</li>`;
-            });
-            content += '</ul>';
-        }
-        
-        content += '<h4>Daily Nutrition Target:</h4>';
-        content += `<div class="macro-grid" style="margin: 15px 0;"><div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div><div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div><div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div><div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div></div>`;
-        
-        content += '</div>';
-        modalContent.innerHTML = content;
+        modalContent.innerHTML = `
+            <div class="section">
+                <h3>${headerText}</h3>
+                ${dayEvents.length > 0 ? `<h4>Scheduled Workouts:</h4><ul>${dayEvents.map(e => `<li><strong>${e.name || e.type}</strong> - ${Math.round((e.moving_time || e.duration || 3600) / 60)} minutes</li>`).join('')}</ul>` : ''}
+                <h4>Daily Nutrition Target:</h4>
+                <div class="macro-grid" style="margin: 15px 0;">
+                    <div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div>
+                </div>
+            </div>
+        `;
         modal.style.display = 'block';
     },
 
@@ -323,8 +318,7 @@ const calendarManager = {
     
     updateMonthYear() {
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        const monthYear = document.getElementById('monthYear');
-        if (monthYear) monthYear.textContent = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+        document.getElementById('monthYear').textContent = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
     },
     
     formatDate(date) {
