@@ -123,11 +123,15 @@ const calendarManager = {
             const dayEvents = this.getEventsForDate(fullDate);
             const { raceInfo, isCarboLoading } = this.analyzeDayType(fullDate, dayEvents);
             
-            // Skip days with no events and not carb loading (for cleaner mobile view)
-            if (dayEvents.length === 0 && !isCarboLoading) return;
+            // Show all days (including rest days), but prioritize days with events
+            const hasEvents = dayEvents.length > 0 || isCarboLoading;
             
             const listItem = document.createElement('div');
             listItem.className = 'day-list-item';
+            
+            // Only show days with events in mobile view for cleaner experience
+            // Rest days can be viewed by clicking calendar grid on desktop
+            if (!hasEvents) return;
             
             // Check if it's today
             const today = new Date();
@@ -263,17 +267,15 @@ const calendarManager = {
             dayContent.appendChild(workoutItem);
         });
         
-        // Add nutrition info
-        if (dayEvents.length > 0 || isCarboLoading) {
-            const nutritionInfo = this.calculateDayNutrition(fullDate, dayEvents, isCarboLoading);
-            const nutritionDiv = document.createElement('div');
-            nutritionDiv.className = 'nutrition-info';
-            nutritionDiv.innerHTML = `
-                <div><strong>${nutritionInfo.calories}</strong> cal</div>
-                <div><strong>${nutritionInfo.carbs}g</strong> carbs</div>
-            `;
-            dayContent.appendChild(nutritionDiv);
-        }
+        // Add nutrition info - ALWAYS show for all days
+        const nutritionInfo = this.calculateDayNutrition(fullDate, dayEvents, isCarboLoading);
+        const nutritionDiv = document.createElement('div');
+        nutritionDiv.className = 'nutrition-info';
+        nutritionDiv.innerHTML = `
+            <div><strong>${nutritionInfo.calories}</strong> cal</div>
+            <div><strong>${nutritionInfo.carbs}g</strong> carbs</div>
+        `;
+        dayContent.appendChild(nutritionDiv);
         
         dayElement.appendChild(dayContent);
         
@@ -310,7 +312,11 @@ const calendarManager = {
         );
         
         if (importantRace) {
-            const daysUntilRace = this.daysBetween(date, new Date(importantRace.start_date_local));
+            const raceDate = new Date(importantRace.start_date_local.split('T')[0]);
+            const daysUntilRace = this.daysBetween(date, raceDate);
+            
+            console.log(`Checking carb loading for ${this.formatDate(date)}: Race on ${this.formatDate(raceDate)}, ${daysUntilRace} days until race`);
+            
             if (daysUntilRace >= 3 && daysUntilRace <= 7) {
                 return { raceInfo: null, isCarboLoading: true };
             }
@@ -326,7 +332,7 @@ const calendarManager = {
         return this.events.filter(event => {
             if (!event.category || !event.category.startsWith('RACE_')) return false;
             
-            const eventDate = new Date(event.start_date_local);
+            const eventDate = new Date(event.start_date_local.split('T')[0]);
             return eventDate > fromDate && eventDate <= endDate;
         });
     },
@@ -607,7 +613,11 @@ const calendarManager = {
     },
     
     daysBetween(startDate, endDate) {
-        const timeDiff = endDate.getTime() - startDate.getTime();
+        // Reset time to avoid timezone issues
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        
+        const timeDiff = end.getTime() - start.getTime();
         return Math.ceil(timeDiff / (1000 * 3600 * 24));
     }
 };
