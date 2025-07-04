@@ -6,8 +6,13 @@ const calendarManager = {
     
     init() {
         console.log('🗓️ Calendar Manager Initialized');
-        this.currentDate = new Date();
         this.updateMonthYear();
+
+        // *** FIX: Attach event listener programmatically ***
+        const loadButton = document.getElementById('loadCalendarBtn');
+        if (loadButton) {
+            loadButton.addEventListener('click', () => this.loadCalendarData());
+        }
     },
     
     async loadCalendarData() {
@@ -106,7 +111,7 @@ const calendarManager = {
             if (this.isSameDate(fullDate, today)) listItem.classList.add('today');
             if (raceInfo) listItem.classList.add('race-day');
             else if (isCarboLoading) listItem.classList.add('carb-loading');
-            else if (isPostRace) listItem.classList.add('post-race'); // New style class
+            else if (isPostRace) listItem.classList.add('post-race'); 
 
             const header = document.createElement('div');
             header.className = 'day-list-header';
@@ -158,7 +163,7 @@ const calendarManager = {
         
         if (raceInfo) dayElement.classList.add('race-day');
         else if (isCarboLoading) dayElement.classList.add('carb-loading');
-        else if (isPostRace) dayElement.classList.add('post-race'); // New style class
+        else if (isPostRace) dayElement.classList.add('post-race'); 
         
         dayElement.innerHTML = `<div class="day-number">${day}</div>`;
         const dayContent = document.createElement('div');
@@ -197,7 +202,6 @@ const calendarManager = {
         let isCarboLoading = false;
         let isPostRace = false;
 
-        // Check for Post-Race day FIRST
         const yesterday = new Date(date);
         yesterday.setDate(date.getDate() - 1);
         const yesterdayEvents = this.getEventsForDate(yesterday);
@@ -210,7 +214,6 @@ const calendarManager = {
             return { raceInfo, isCarboLoading: false, isPostRace: false };
         }
 
-        // *** FIX: Changed look-ahead window from 3 to 4 days ***
         const upcomingRaces = this.findUpcomingRaces(date, 4); 
         const importantRace = upcomingRaces.find(r => r.category === 'RACE_A' || r.category === 'RACE_B');
         
@@ -312,3 +315,25 @@ const calendarManager = {
     },
     
     goToToday() {
+        this.currentDate = new Date();
+        this.renderCalendar();
+    },
+    
+    updateMonthYear() {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthYear = document.getElementById('monthYear');
+        if (monthYear) monthYear.textContent = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+    },
+    
+    formatDate(date) {
+        return date.toISOString().split('T')[0];
+    },
+    
+    formatDateDisplay(date) {
+        return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    },
+    
+    isSameDate(date1, date2) {
+        return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
+    }
+};
