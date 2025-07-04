@@ -15,7 +15,6 @@
         </div>
 
         <div class="calendar-container">
-            <!-- API Configuration -->
             <div class="section">
                 <h2>🔗 Connect to Intervals.icu</h2>
                 <div class="form-row">
@@ -28,11 +27,10 @@
                         <input type="number" id="bodyWeight" min="100" max="250" value="192">
                     </div>
                 </div>
-                <button class="button" onclick="calendarManager.loadCalendarData()">Load Calendar</button>
+                <button class="button" id="loadCalendarBtn">Load Calendar</button>
                 <a href="index.html" class="button secondary" style="text-decoration: none; display: inline-block;">← Daily Calculator</a>
             </div>
 
-            <!-- Legend -->
             <div class="legend" id="legend" style="display: none;">
                 <div class="legend-item">
                     <div class="legend-color" style="background: #2196F3;"></div>
@@ -56,7 +54,6 @@
                 </div>
             </div>
 
-            <!-- Calendar Navigation -->
             <div class="calendar-header" id="calendarHeader" style="display: none;">
                 <div class="calendar-nav">
                     <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
@@ -66,15 +63,12 @@
                 <button class="button" onclick="calendarManager.goToToday()">Today</button>
             </div>
 
-            <!-- Loading State -->
             <div class="loading" id="loadingState">
                 <h3>Ready to load your nutrition calendar!</h3>
                 <p>Enter your API key and click "Load Calendar" to get started.</p>
             </div>
 
-            <!-- Calendar Grid -->
             <div class="calendar-grid" id="calendarGrid" style="display: none;">
-                <!-- Calendar headers -->
                 <div class="calendar-header-cell">Sun</div>
                 <div class="calendar-header-cell">Mon</div>
                 <div class="calendar-header-cell">Tue</div>
@@ -82,17 +76,13 @@
                 <div class="calendar-header-cell">Thu</div>
                 <div class="calendar-header-cell">Fri</div>
                 <div class="calendar-header-cell">Sat</div>
-                <!-- Calendar days will be populated by JavaScript -->
-            </div>
+                </div>
 
-            <!-- Mobile List View -->
             <div class="mobile-list" id="mobileList" style="display: none;">
-                <!-- List items will be populated by JavaScript -->
-            </div>
+                </div>
         </div>
     </div>
 
-    <!-- Day Detail Modal -->
     <div class="day-detail-modal" id="dayDetailModal" onclick="calendarManager.handleModalClick(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -100,12 +90,10 @@
                 <button class="modal-close" onclick="calendarManager.closeModal()">×</button>
             </div>
             <div id="modalContent">
-                <!-- Modal content will be populated by JavaScript -->
-            </div>
+                </div>
         </div>
     </div>
 
-    <!-- Load JavaScript modules -->
     <script src="js/ui.js"></script>
     <script src="js/api.js"></script>
     <script src="js/nutrition.js"></script>
