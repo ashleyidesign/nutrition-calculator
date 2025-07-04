@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nutrition Calendar - Workout Nutrition Calculator</title>
+    <title>Workout Nutrition Calculator</title>
     <link rel="stylesheet" href="styles.css">
 
 </head>
@@ -16,7 +16,7 @@
 
         <div class="calendar-container">
             <div class="section">
-                <h2>🔗 Connect to Intervals.icu</h2>
+                <h2>⚙️ Settings</h2>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="apiKey">API Key</label>
@@ -27,37 +27,30 @@
                         <input type="number" id="bodyWeight" min="100" max="250" value="192">
                     </div>
                 </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="goals">Current Goals</label>
+                        <select id="goals">
+                            <option value="weight-loss">Weight Loss</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="performance">Performance Focus</option>
+                        </select>
+                    </div>
+                </div>
                 <button class="button" id="loadCalendarBtn">Load Calendar</button>
-                <a href="index.html" class="button secondary" style="text-decoration: none; display: inline-block;">← Daily Calculator</a>
             </div>
 
             <div class="legend" id="legend" style="display: none;">
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #006989;"></div>
-                    <span>Regular Workout</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #f44336;"></div>
-                    <span>A-Priority Race</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #B6C454;"></div>
-                    <span>Carb Loading</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #9c27b0;"></div>
-                    <span>C-Priority Race</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #4CAF50;"></div>
-                    <span>Post-Race Recovery</span>
-                </div>
+                <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #f44336;"></div><span>Race Day</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #B6C454;"></div><span>Carb Loading</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #006989; opacity: 0.5"></div><span>Post-Race Recovery</span></div>
             </div>
 
             <div class="calendar-header" id="calendarHeader" style="display: none;">
                 <div class="calendar-nav">
                     <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
-                    <div class="month-year" id="monthYear">January 2025</div>
+                    <div class="month-year" id="monthYear"></div>
                     <button class="nav-btn" onclick="calendarManager.nextMonth()">Next ›</button>
                 </div>
                 <button class="button" onclick="calendarManager.goToToday()">Today</button>
@@ -65,7 +58,7 @@
 
             <div class="loading" id="loadingState">
                 <h3>Ready to load your nutrition calendar!</h3>
-                <p>Enter your API key and click "Load Calendar" to get started.</p>
+                <p>Enter your settings and click "Load Calendar" to get started.</p>
             </div>
 
             <div class="calendar-grid" id="calendarGrid">
@@ -77,20 +70,18 @@
                 <div class="calendar-header-cell">Fri</div>
                 <div class="calendar-header-cell">Sat</div>
             </div>
+            <div class="mobile-list" id="mobileList"></div>
 
-            <div class="mobile-list" id="mobileList">
-                </div>
         </div>
     </div>
 
-    <div class="day-detail-modal" id="dayDetailModal" onclick="calendarManager.handleModalClick(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="day-detail-modal" id="dayDetailModal">
+        <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalDate">Day Details</h2>
                 <button class="modal-close" onclick="calendarManager.closeModal()">×</button>
             </div>
-            <div id="modalContent">
-                </div>
+            <div id="modalContent"></div>
         </div>
     </div>
 
@@ -99,9 +90,8 @@
     <script src="js/nutrition.js"></script>
     <script src="js/calendar.js"></script>
     <script>
-        // Initialize calendar on page load
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🗓️ Nutrition Calendar v1.0 Loaded!');
+            console.log('🗓️ Nutrition Calendar Initialized');
             calendarManager.init();
         });
     </script>
