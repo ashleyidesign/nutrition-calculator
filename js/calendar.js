@@ -225,7 +225,7 @@ const calendarManager = {
     },
     
     calculateDayNutrition(date, dayEvents, isCarboLoading) {
-        // Base calculation using existing nutrition module
+        // Base calculation - calculate nutrition without updating UI
         let totalDuration = 0;
         let highestIntensity = 'none';
         
@@ -254,8 +254,58 @@ const calendarManager = {
             }
         });
         
-        // Calculate base nutrition
-        const nutrition = nutritionCalculator.calculate(this.bodyWeight, 'weight-loss', highestIntensity, totalDuration);
+        // Calculate nutrition manually without UI updates
+        let dailyCalories, dailyProtein, dailyFat, dailyCarbs;
+        const goals = 'weight-loss'; // Default for calendar view
+        
+        if (goals === 'weight-loss') {
+            // Check if this is a race day (high duration suggests race)
+            const isRaceDay = totalDuration > 180; // 3+ hours suggests race
+            
+            if (isRaceDay) {
+                // Race-specific macro calculations based on duration
+                if (totalDuration >= 240) { // 4+ hours = ultra-endurance
+                    dailyProtein = Math.round(this.bodyWeight * 0.94);
+                    dailyFat = Math.round(this.bodyWeight * 0.78);
+                    dailyCarbs = Math.round(this.bodyWeight * 3.9);
+                } else { // 3-4 hours = long race
+                    dailyProtein = Math.round(this.bodyWeight * 0.86);
+                    dailyFat = Math.round(this.bodyWeight * 0.65);
+                    dailyCarbs = Math.round(this.bodyWeight * 3.0);
+                }
+            } else {
+                // Regular training day calculations
+                dailyProtein = Math.round(this.bodyWeight * 0.78);
+                dailyFat = Math.round(this.bodyWeight * 0.41);
+                
+                // Carb formula based on workout intensity
+                if (highestIntensity === 'none') {
+                    dailyCarbs = Math.round(this.bodyWeight * 0.885);
+                } else {
+                    // Base carbs by intensity level
+                    const intensityMultipliers = {
+                        'easy': 1.0,
+                        'endurance': 1.1,
+                        'tempo': 1.6,
+                        'threshold': 1.7,
+                        'intervals': 1.8,
+                        'strength': 1.2
+                    };
+                    
+                    const baseCarbs = this.bodyWeight * intensityMultipliers[highestIntensity];
+                    
+                    // Adjust for duration
+                    let durationAdjustment = 1.0;
+                    if (totalDuration > 120) durationAdjustment = 1.1;
+                    else if (totalDuration > 90) durationAdjustment = 1.05;
+                    
+                    dailyCarbs = Math.round(baseCarbs * durationAdjustment);
+                }
+            }
+            
+            // Calculate total calories from macros
+            dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
+        }
         
         // Adjust for carb loading
         if (isCarboLoading) {
@@ -270,13 +320,51 @@ const calendarManager = {
                 // Carb loading formula: increase carbs based on days until race
                 if (daysUntilRace >= 3) {
                     const carbMultiplier = 1.5 + (0.1 * (7 - daysUntilRace)); // 1.5x to 1.9x
-                    nutrition.carbs = Math.round(nutrition.carbs * carbMultiplier);
-                    nutrition.calories = (nutrition.protein * 4) + (nutrition.fat * 9) + (nutrition.carbs * 4);
+                    dailyCarbs = Math.round(dailyCarbs * carbMultiplier);
+                    dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
                 }
             }
         }
         
-        return nutrition;
+        // Calculate workout fueling
+        const bodyWeightKg = this.bodyWeight * 0.453592;
+        let preWorkoutCarbs = 0;
+        let duringWorkoutCarbs = 0;
+        let postWorkoutCarbs = 0;
+        let fluidIntake = 0;
+        let fuelingTips = [];
+        
+        if (highestIntensity === 'none') {
+            fuelingTips.push('Rest day - focus on recovery nutrition');
+        } else if (totalDuration < 60) {
+            preWorkoutCarbs = Math.round(bodyWeightKg * 0.5);
+            fluidIntake = 400;
+            postWorkoutCarbs = Math.round(bodyWeightKg * 0.8);
+            fuelingTips.push('Pre: 1-2 hours before workout');
+            fuelingTips.push('Post: Within 30 minutes after workout');
+        } else {
+            preWorkoutCarbs = Math.round(bodyWeightKg * 0.7);
+            duringWorkoutCarbs = totalDuration < 120 ? 25 : 35;
+            postWorkoutCarbs = Math.round(bodyWeightKg * 1.0);
+            fluidIntake = 500;
+            fuelingTips.push('Pre: 1-2 hours before workout');
+            fuelingTips.push('During: Start fueling after 60 minutes');
+            fuelingTips.push('Post: Within 30 minutes');
+        }
+        
+        return {
+            calories: dailyCalories,
+            protein: dailyProtein,
+            carbs: dailyCarbs,
+            fat: dailyFat,
+            fueling: {
+                preWorkoutCarbs,
+                duringWorkoutCarbs,
+                postWorkoutCarbs,
+                fluidIntake,
+                fuelingTips
+            }
+        };
     },
     
     showDayDetails(date, dayEvents, isCarboLoading, raceInfo) {
