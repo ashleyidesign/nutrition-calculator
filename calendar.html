@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .calendar-container {
-            max-width: 1200px;
+            max-width: 100%;
             margin: 0 auto;
             padding: 20px;
         }
@@ -54,6 +54,7 @@
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 100%;
         }
 
         .calendar-header-cell {
@@ -67,12 +68,13 @@
 
         .calendar-day {
             background: white;
-            min-height: 120px;
+            min-height: 140px;
             padding: 8px;
             position: relative;
             border: none;
             cursor: pointer;
             transition: background-color 0.2s;
+            overflow: hidden;
         }
 
         .calendar-day:hover {
@@ -243,19 +245,82 @@
             color: #666;
         }
 
-        @media (max-width: 768px) {
+        /* Mobile List View */
+        .mobile-list {
+            display: none;
+        }
+
+        .day-list-item {
+            background: white;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .day-list-item.race-day {
+            border-left: 4px solid #f44336;
+        }
+
+        .day-list-item.carb-loading {
+            border-left: 4px solid #ff9800;
+        }
+
+        .day-list-item.today {
+            border-left: 4px solid #2196F3;
+        }
+
+        .day-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .day-list-date {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .day-list-workouts {
+            margin-bottom: 10px;
+        }
+
+        .day-list-nutrition {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        @media (max-width: 1024px) {
             .calendar-grid {
-                gap: 0.5px;
+                display: none;
             }
             
-            .calendar-day {
-                min-height: 80px;
-                padding: 4px;
+            .mobile-list {
+                display: block;
             }
             
             .calendar-header {
                 flex-direction: column;
                 gap: 15px;
+            }
+
+            .legend {
+                justify-content: center;
+            }
+        }
+
+        @media (min-width: 1025px) {
+            .calendar-day {
+                min-height: 160px;
+            }
+            
+            .day-content {
+                font-size: 0.8em;
+            }
+            
+            .workout-item {
+                font-size: 0.75em;
             }
         }
     </style>
@@ -336,6 +401,11 @@
                 <div class="calendar-header-cell">Fri</div>
                 <div class="calendar-header-cell">Sat</div>
                 <!-- Calendar days will be populated by JavaScript -->
+            </div>
+
+            <!-- Mobile List View -->
+            <div class="mobile-list" id="mobileList" style="display: none;">
+                <!-- List items will be populated by JavaScript -->
             </div>
         </div>
     </div>
