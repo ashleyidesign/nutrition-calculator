@@ -8,7 +8,6 @@ const calendarManager = {
         console.log('🗓️ Calendar Manager Initialized');
         this.updateMonthYear();
 
-        // *** FIX: Attach event listener programmatically ***
         const loadButton = document.getElementById('loadCalendarBtn');
         if (loadButton) {
             loadButton.addEventListener('click', () => this.loadCalendarData());
@@ -37,11 +36,14 @@ const calendarManager = {
             
             console.log(`Loaded ${this.events.length} events for calendar`);
             
+            // Show calendar elements (but let CSS handle responsive display)
             document.getElementById('loadingState').style.display = 'none';
             document.getElementById('legend').style.display = 'flex';
             document.getElementById('calendarHeader').style.display = 'flex';
-            document.getElementById('calendarGrid').style.display = 'grid';
-            document.getElementById('mobileList').style.display = 'block';
+            
+            // *** FIX: REMOVED the two lines below that were forcing both views to display ***
+            // document.getElementById('calendarGrid').style.display = 'grid';
+            // document.getElementById('mobileList').style.display = 'block';
             
             this.renderCalendar();
             
