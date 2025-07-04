@@ -21,7 +21,7 @@ const nutritionCalculator = {
     calculateMacros(bodyWeightKg, workoutType, duration, isRaceDay, isPostRace, isCarboLoading, goals) {
         let p_mult, f_mult, c_mult;
 
-        // Step 1: Set the baseline macros based on the type of day
+        // Step 1: Set the baseline macros for the day type (assuming "Maintenance" goal)
         if (isRaceDay) {
             p_mult = 2.2; f_mult = 1.7; c_mult = 8.6;
         } else if (isPostRace) {
@@ -33,7 +33,8 @@ const nutritionCalculator = {
             switch (workoutType) {
                 case 'none':
                 case 'easy':
-                    p_mult = 1.72; f_mult = 0.92; c_mult = 1.95; // ~2000 cal baseline
+                    // Set a sensible MAINTENANCE rest day baseline (~2250 calories)
+                    p_mult = 1.8; f_mult = 1.0; c_mult = 2.5; 
                     break;
                 case 'endurance':
                     p_mult = 1.8; f_mult = 1.1; c_mult = 4.3 + (duration > 120 ? 1.0 : 0);
@@ -53,9 +54,11 @@ const nutritionCalculator = {
         if (isRegularDay) {
             switch(goals) {
                 case 'weight-loss':
-                    // On rest/easy days, no change is needed (targets are already set).
-                    // On harder days, create a deficit.
-                    if (workoutType !== 'none' && workoutType !== 'easy') {
+                    // *** FIX: On a rest day, explicitly set the 2000 cal target. ***
+                    if (workoutType === 'none' || workoutType === 'easy') {
+                        p_mult = 1.72; f_mult = 0.92; c_mult = 1.95;
+                    } else {
+                        // On harder days, create a deficit from the maintenance baseline.
                         f_mult = Math.max(0.8, f_mult - 0.2);
                         c_mult = Math.max(2.0, c_mult - 1.0);
                     }
