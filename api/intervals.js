@@ -14,14 +14,23 @@ export default async function handler(req, res) {
   }
   
   try {
-    const { athleteId, apiKey, date } = req.body;
+    const { athleteId, apiKey, date, oldest, newest } = req.body;
     
-    if (!athleteId || !apiKey || !date) {
+    if (!athleteId || !apiKey) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    // Call Intervals.icu API
-    const apiUrl = `https://intervals.icu/api/v1/athlete/${athleteId}/events?oldest=${date}&newest=${date}`;
+    // Build API URL - handle both single date and date range
+    let apiUrl;
+    if (oldest && newest) {
+      // Date range query for calendar
+      apiUrl = `https://intervals.icu/api/v1/athlete/${athleteId}/events?oldest=${oldest}&newest=${newest}`;
+    } else if (date) {
+      // Single date query
+      apiUrl = `https://intervals.icu/api/v1/athlete/${athleteId}/events?oldest=${date}&newest=${date}`;
+    } else {
+      return res.status(400).json({ error: 'Either date or oldest/newest range required' });
+    }
     
     const response = await fetch(apiUrl, {
       headers: {
