@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutrition Calendar - Workout Nutrition Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .calendar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 0 10px;
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .nav-btn:hover {
+            background: #1976D2;
+        }
+
+        .month-year {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header-cell {
+            background: #2196F3;
+            color: white;
+            padding: 15px 5px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
+            padding: 8px;
+            position: relative;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .calendar-day:hover {
+            background: #f5f5f5;
+        }
+
+        .calendar-day.other-month {
+            background: #f9f9f9;
+            color: #ccc;
+        }
+
+        .calendar-day.today {
+            background: #e3f2fd;
+            border: 2px solid #2196F3;
+        }
+
+        .calendar-day.race-day {
+            background: #ffebee;
+            border: 2px solid #f44336;
+        }
+
+        .calendar-day.carb-loading {
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+        }
+
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .day-content {
+            font-size: 0.75em;
+            line-height: 1.2;
+        }
+
+        .workout-item {
+            background: #e3f2fd;
+            padding: 2px 4px;
+            margin: 1px 0;
+            border-radius: 3px;
+            border-left: 3px solid #2196F3;
+            font-size: 0.7em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .workout-item.race-a {
+            background: #ffebee;
+            border-left-color: #f44336;
+            font-weight: bold;
+        }
+
+        .workout-item.race-b {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+            font-weight: bold;
+        }
+
+        .workout-item.race-c {
+            background: #f3e5f5;
+            border-left-color: #9c27b0;
+            font-weight: bold;
+        }
+
+        .nutrition-info {
+            margin-top: 3px;
+            padding: 2px;
+            background: #f8f9fa;
+            border-radius: 2px;
+            font-size: 0.65em;
+        }
+
+        .carb-loading-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ff9800;
+            color: white;
+            font-size: 0.6em;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .race-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #f44336;
+            color: white;
+            font-size: 0.6em;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85em;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .day-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .calendar-grid {
+                gap: 0.5px;
+            }
+            
+            .calendar-day {
+                min-height: 80px;
+                padding: 4px;
+            }
+            
+            .calendar-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗓️ Nutrition Calendar</h1>
+            <p>Plan your nutrition strategy for training and racing</p>
+        </div>
+
+        <div class="calendar-container">
+            <!-- API Configuration -->
+            <div class="section">
+                <h2>🔗 Connect to Intervals.icu</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="apiKey">API Key</label>
+                        <input type="password" id="apiKey" placeholder="Enter your API key" value="5b7vz3ozlxd42dqx0udbrq7e2">
+                    </div>
+                    <div class="form-group">
+                        <label for="bodyWeight">Body Weight (lbs)</label>
+                        <input type="number" id="bodyWeight" min="100" max="250" value="192">
+                    </div>
+                </div>
+                <button class="button" onclick="calendarManager.loadCalendarData()">Load Calendar</button>
+                <a href="index.html" class="button secondary" style="text-decoration: none; display: inline-block;">← Daily Calculator</a>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend" id="legend" style="display: none;">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2196F3;"></div>
+                    <span>Regular Workout</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f44336;"></div>
+                    <span>A-Priority Race</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff9800;"></div>
+                    <span>B-Priority Race</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9c27b0;"></div>
+                    <span>C-Priority Race</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff9800; opacity: 0.3;"></div>
+                    <span>Carb Loading</span>
+                </div>
+            </div>
+
+            <!-- Calendar Navigation -->
+            <div class="calendar-header" id="calendarHeader" style="display: none;">
+                <div class="calendar-nav">
+                    <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
+                    <div class="month-year" id="monthYear">January 2025</div>
+                    <button class="nav-btn" onclick="calendarManager.nextMonth()">Next ›</button>
+                </div>
+                <button class="button" onclick="calendarManager.goToToday()">Today</button>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading" id="loadingState">
+                <h3>Ready to load your nutrition calendar!</h3>
+                <p>Enter your API key and click "Load Calendar" to get started.</p>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="calendar-grid" id="calendarGrid" style="display: none;">
+                <!-- Calendar headers -->
+                <div class="calendar-header-cell">Sun</div>
+                <div class="calendar-header-cell">Mon</div>
+                <div class="calendar-header-cell">Tue</div>
+                <div class="calendar-header-cell">Wed</div>
+                <div class="calendar-header-cell">Thu</div>
+                <div class="calendar-header-cell">Fri</div>
+                <div class="calendar-header-cell">Sat</div>
+                <!-- Calendar days will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Detail Modal -->
+    <div class="day-detail-modal" id="dayDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalDate">Day Details</h2>
+                <button class="modal-close" onclick="calendarManager.closeModal()">×</button>
+            </div>
+            <div id="modalContent">
+                <!-- Modal content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript modules -->
+    <script src="js/ui.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/nutrition.js"></script>
+    <script src="js/calendar.js"></script>
+    <script>
+        // Initialize calendar on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🗓️ Nutrition Calendar v1.0 Loaded!');
+            calendarManager.init();
+        });
+    </script>
+</body>
+</html>
