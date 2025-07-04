@@ -6,8 +6,8 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #E6FAFC; /* New Background */
-    color: #342E37; /* New Primary Text */
+    background-color: #E6FAFC;
+    color: #342E37;
     min-height: 100vh;
     padding: 0;
 }
@@ -23,7 +23,7 @@ body {
 }
 
 .header {
-    background: #006989; /* New Primary Color */
+    background: #006989;
     color: white;
     padding: 30px;
     text-align: center;
@@ -44,35 +44,16 @@ body {
     max-width: 100%;
 }
 
-/* Two-column layout for daily calculator */
-.daily-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    align-items: start;
-}
-
-.daily-layout .left-column {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-}
-
-.daily-layout .right-column {
-    position: sticky;
-    top: 30px;
-}
-
 .section {
     margin-bottom: 30px;
     padding: 25px;
     background: #f8f9fa;
     border-radius: 10px;
-    border-left: 4px solid #006989; /* New Primary Color */
+    border-left: 4px solid #006989;
 }
 
 .section h2 {
-    color: #0F1020; /* New Heading Color */
+    color: #0F1020;
     margin-bottom: 20px;
     font-size: 1.5em;
 }
@@ -85,7 +66,7 @@ label {
     display: block;
     margin-bottom: 5px;
     font-weight: 600;
-    color: #342E37; /* New Primary Text */
+    color: #342E37;
 }
 
 input, select {
@@ -101,7 +82,7 @@ input, select {
 
 input:focus, select:focus {
     outline: none;
-    border-color: #006989; /* New Primary Color */
+    border-color: #006989;
 }
 
 .form-row {
@@ -111,7 +92,7 @@ input:focus, select:focus {
 }
 
 .button {
-    background: #006989; /* New Primary Color */
+    background: #006989;
     color: white;
     padding: 15px 30px;
     border: none;
@@ -131,12 +112,7 @@ input:focus, select:focus {
 }
 
 .button.secondary {
-    background: #342E37; /* New Dark Gray for secondary actions */
-}
-
-.results {
-    display: none;
-    margin-top: 30px;
+    background: #342E37;
 }
 
 .nutrition-card {
@@ -145,11 +121,11 @@ input:focus, select:focus {
     padding: 25px;
     margin-bottom: 20px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    border-left: 4px solid #B6C454; /* New Accent Color */
+    border-left: 4px solid #B6C454;
 }
 
 .nutrition-card h3 {
-    color: #0F1020; /* New Heading Color */
+    color: #0F1020;
     margin-bottom: 20px;
     font-size: 1.4em;
 }
@@ -171,27 +147,27 @@ input:focus, select:focus {
 .macro-value {
     font-size: 1.8em;
     font-weight: bold;
-    color: #006989; /* New Primary Color */
+    color: #006989;
     margin-bottom: 5px;
 }
 
 .macro-label {
     font-size: 0.9em;
-    color: #342E37; /* New Primary Text */
+    color: #342E37;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .fueling-notes {
-    background: #f0f3d3; /* Light version of Accent */
-    border: 1px solid #B6C454; /* New Accent Color */
+    background: #f0f3d3;
+    border: 1px solid #B6C454;
     border-radius: 8px;
     padding: 15px;
     margin-top: 15px;
 }
 
 .fueling-notes h4 {
-    color: #5d662a; /* Dark version of Accent */
+    color: #5d662a;
     margin-bottom: 10px;
 }
 
@@ -201,40 +177,9 @@ input:focus, select:focus {
 
 .fueling-notes li {
     margin-bottom: 5px;
-    color: #5d662a; /* Dark version of Accent */
-}
-
-#workoutStatus {
-    margin-top: 15px;
-    padding: 10px;
-    border-radius: 5px;
-    display: none;
-    color: white;
-}
-
-.race-override {
-    background: #f0f3d3; /* Light version of Accent */
-    border: 2px solid #B6C454; /* New Accent Color */
-    border-radius: 10px;
-    padding: 20px;
-    margin-top: 20px;
-    display: none;
-}
-
-.race-override h3 {
     color: #5d662a;
-    margin-bottom: 15px;
-    font-size: 1.3em;
 }
 
-.race-override .race-workout {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-/* Calendar specific styles */
 .calendar-container {
     max-width: 100%;
     margin: 0 auto;
@@ -256,7 +201,7 @@ input:focus, select:focus {
 }
 
 .nav-btn {
-    background: #006989; /* New Primary Color */
+    background: #006989;
     color: white;
     border: none;
     padding: 10px 15px;
@@ -272,7 +217,7 @@ input:focus, select:focus {
 .month-year {
     font-size: 1.8em;
     font-weight: bold;
-    color: #0F1020; /* New Heading Color */
+    color: #0F1020;
 }
 
 .calendar-grid {
@@ -287,7 +232,7 @@ input:focus, select:focus {
 }
 
 .calendar-header-cell {
-    background: #006989; /* New Primary Color */
+    background: #006989;
     color: white;
     padding: 15px 5px;
     text-align: center;
@@ -317,17 +262,20 @@ input:focus, select:focus {
 
 .calendar-day.today {
     background: #E6FAFC;
-    border: 2px solid #006989; /* New Primary Color */
+    border: 2px solid #006989;
 }
 
 .calendar-day.race-day, .workout-item.race-a {
     background: #ffebee;
-    border-left-color: #f44336; /* Keeping red for high-priority races */
+}
+.calendar-day.race-day {
+     border-left-color: #f44336;
 }
 
+
 .calendar-day.carb-loading, .workout-item.race-b {
-    background: #f0f3d3; /* Light Accent */
-    border-left-color: #B6C454; /* New Accent Color */
+    background: #f0f3d3;
+    border-left-color: #B6C454;
 }
 
 .day-number {
@@ -346,7 +294,7 @@ input:focus, select:focus {
     padding: 3px 5px;
     margin: 2px 0;
     border-radius: 3px;
-    border-left: 3px solid #006989; /* New Primary Color */
+    border-left: 3px solid #006989;
     font-size: 0.8em;
     white-space: nowrap;
     overflow: hidden;
@@ -365,7 +313,6 @@ input:focus, select:focus {
     position: absolute;
     top: 2px;
     right: 2px;
-    background: #B6C454; /* New Accent */
     color: white;
     font-size: 0.7em;
     padding: 2px 4px;
@@ -373,11 +320,20 @@ input:focus, select:focus {
     font-weight: bold;
 }
 
+.carb-loading-badge {
+    background: #B6C454;
+}
+
+.post-race-badge {
+    background: #006989;
+    opacity: 0.7;
+}
+
 .race-badge {
     position: absolute;
     top: 2px;
     right: 2px;
-    background: #f44336; /* Keeping red for races */
+    background: #f44336;
     color: white;
     font-size: 0.7em;
     padding: 2px 4px;
@@ -408,7 +364,7 @@ input:focus, select:focus {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(15, 16, 32, 0.7); /* Using near-black with transparency */
+    background: rgba(15, 16, 32, 0.7);
     z-index: 1000;
 }
 
@@ -426,17 +382,80 @@ input:focus, select:focus {
     overflow-y: auto;
 }
 
-/* Mobile responsive */
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.mobile-list {
+    display: none;
+}
+
+.day-list-item {
+    background: white;
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.day-list-item.race-day {
+    background: #ffebee;
+    border: 2px solid #f44336;
+}
+
+.day-list-item.carb-loading {
+    background: #f0f3d3;
+    border: 2px solid #B6C454;
+}
+
+.day-list-item.today {
+    background: #E6FAFC;
+    border: 2px solid #006989;
+}
+
+.day-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.day-list-date {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.day-list-workouts {
+    margin-bottom: 10px;
+}
+
+.day-list-nutrition {
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* --- RESPONSIVE FIX --- */
+
+/* On small screens, hide the grid and show the list */
 @media (max-width: 1024px) {
     .calendar-grid {
         display: none;
     }
-    
     .mobile-list {
         display: block;
     }
-    
-    .daily-layout {
-        grid-template-columns: 1fr;
+}
+
+/* On large screens, show the grid and hide the list */
+@media (min-width: 1025px) {
+    .calendar-grid {
+        display: grid;
+    }
+    .mobile-list {
+        display: none;
     }
 }
