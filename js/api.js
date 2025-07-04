@@ -58,8 +58,6 @@ const intervalsAPI = {
         console.log('🎯 API: Loading activity details for', activityId);
         
         try {
-            // Note: This would need to be implemented in your API endpoint
-            // Intervals.icu endpoint: /api/v1/athlete/{id}/activities/{activityId}
             const response = await fetch('/api/intervals-activity', {
                 method: 'POST',
                 headers: {
@@ -73,11 +71,12 @@ const intervalsAPI = {
             });
             
             if (!response.ok) {
-                throw new Error(`Activity API Error: ${response.status}`);
+                console.warn(`Activity API Error: ${response.status} for activity ${activityId}`);
+                return null;
             }
             
-            const activityData = await response.json();
-            return this.processActivityData(activityData);
+            const data = await response.json();
+            return data.activity ? this.processActivityData(data.activity) : null;
             
         } catch (error) {
             console.warn('Could not load activity details:', error);
@@ -99,48 +98,11 @@ const intervalsAPI = {
             distance: rawData.distance,
             avgSpeed: rawData.average_speed,
             calories: rawData.kilojoules ? Math.round(rawData.kilojoules / 4.184) : null,
-            trainingStressScore: rawData.weighted_average_watts ? this.calculateTSS(rawData) : null,
+            trainingStressScore: rawData.training_stress_score,
             perceivedEffort: rawData.perceived_exertion || null,
             description: rawData.description,
             workoutCode: rawData.workout_code
         };
-    },
-
-    // Calculate Training Stress Score approximation
-    calculateTSS(activityData) {
-        if (!activityData.weighted_average_watts || !activityData.moving_time) return null;
-        
-        // Basic TSS calculation: (duration_hours * NP^2 * IF) / (FTP * 3600) * 100
-        // This is simplified - you'd need FTP data for accurate calculation
-        const durationHours = activityData.moving_time / 3600;
-        const estimatedFTP = 250; // This should come from athlete profile
-        const normalizedPower = activityData.weighted_average_watts || activityData.average_watts;
-        const intensityFactor = normalizedPower / estimatedFTP;
-        
-        return Math.round((durationHours * normalizedPower * intensityFactor) / (estimatedFTP * 3600) * 100);
-    },
-
-    // Enhanced workout processing with completion data
-    async loadWorkoutsWithCompletionData(apiKey, athleteId, date) {
-        const workouts = await this.loadWorkouts(apiKey, athleteId, date);
-        
-        // For each workout, try to load completion data if it's a past workout
-        const selectedDate = new Date(date);
-        const today = new Date();
-        
-        if (selectedDate < today) {
-            for (const workout of workouts) {
-                if (workout.id) {
-                    const completionData = await this.loadActivityDetails(apiKey, athleteId, workout.id);
-                    if (completionData) {
-                        workout.completionData = completionData;
-                        workout.isCompleted = true;
-                    }
-                }
-            }
-        }
-        
-        return workouts;
     },
 
     // Enhanced range loading with completion data for past workouts
@@ -158,18 +120,23 @@ const intervalsAPI = {
             workoutsByDate.get(workoutDate).push(workout);
         });
         
-        // Load completion data for past workouts
+        // Load completion data for past workouts (limit to avoid too many API calls)
+        let completionCallsCount = 0;
+        const maxCompletionCalls = 15; // Limit to avoid rate limiting
+        
         for (const [dateStr, dayWorkouts] of workoutsByDate) {
             const workoutDate = new Date(dateStr);
-            if (workoutDate < today) {
+            if (workoutDate < today && completionCallsCount < maxCompletionCalls) {
                 for (const workout of dayWorkouts) {
-                    if (workout.id) {
+                    if (workout.id && completionCallsCount < maxCompletionCalls) {
                         try {
                             const completionData = await this.loadActivityDetails(apiKey, athleteId, workout.id);
                             if (completionData) {
                                 workout.completionData = completionData;
                                 workout.isCompleted = true;
+                                console.log(`✅ Loaded completion data for ${workout.name}: ${completionData.actualDuration}min, RPE: ${completionData.perceivedEffort || 'N/A'}`);
                             }
+                            completionCallsCount++;
                         } catch (error) {
                             console.warn(`Could not load completion data for workout ${workout.id}:`, error);
                         }
@@ -178,6 +145,7 @@ const intervalsAPI = {
             }
         }
         
+        console.log(`📊 Loaded completion data for ${completionCallsCount} workouts`);
         return workouts;
     },
     
@@ -187,21 +155,6 @@ const intervalsAPI = {
             athleteId: 'i290140',
             apiKey: document.getElementById('apiKey')?.value || '5b7vz3ozlxd42dqx0udbrq7e2'
         };
-    },
-
-    // Helper to determine if a workout is completed
-    isWorkoutCompleted(workout) {
-        return workout.isCompleted || workout.completionData;
-    },
-
-    // Get completion percentage for a workout
-    getCompletionPercentage(planned, actual) {
-        if (!actual) return 0;
-        
-        const plannedDuration = planned.duration || ((planned.moving_time || planned.elapsed_time) / 60);
-        const actualDuration = actual.actualDuration;
-        
-        return Math.round((actualDuration / plannedDuration) * 100);
     }
 };
 
@@ -209,7 +162,6 @@ const intervalsAPI = {
 const completionDataStore = {
     data: new Map(),
     
-    // Store completion analysis for a workout
     store(workoutId, date, analysis) {
         const key = `${date}_${workoutId}`;
         this.data.set(key, {
@@ -219,13 +171,11 @@ const completionDataStore = {
         });
     },
     
-    // Get completion analysis
     get(workoutId, date) {
         const key = `${date}_${workoutId}`;
         return this.data.get(key);
     },
     
-    // Get all completion data for a date
     getByDate(date) {
         const results = [];
         for (const [key, value] of this.data) {
@@ -236,7 +186,6 @@ const completionDataStore = {
         return results;
     },
     
-    // Mark adjustment as applied
     markApplied(workoutId, date) {
         const key = `${date}_${workoutId}`;
         const data = this.data.get(key);
