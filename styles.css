@@ -49,7 +49,6 @@ body {
     padding: 25px;
     background: #f8f9fa;
     border-radius: 10px;
-    /* FIX: Removed left border */
 }
 
 .section h2 {
@@ -121,7 +120,6 @@ input:focus, select:focus {
     padding: 25px;
     margin-bottom: 20px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    /* FIX: Removed left border */
 }
 
 .nutrition-card h3 {
@@ -156,6 +154,74 @@ input:focus, select:focus {
     color: #342E37;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Completion Tracking Styles */
+.adjustment-notice {
+    background: #e8f5e8;
+    border: 2px solid #4caf50;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.adjustment-notice h4 {
+    color: #2e7d32;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+.adjustment-details {
+    background: rgba(76, 175, 80, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.adjustment-details p {
+    margin: 5px 0;
+    font-size: 0.95em;
+}
+
+.timing-recommendations, .recovery-recommendations {
+    margin-top: 15px;
+}
+
+.timing-recommendations h5, .recovery-recommendations h5 {
+    color: #2e7d32;
+    margin-bottom: 8px;
+    font-size: 1em;
+}
+
+.timing-recommendations ul, .recovery-recommendations ul {
+    margin-left: 20px;
+}
+
+.timing-recommendations li, .recovery-recommendations li {
+    margin-bottom: 5px;
+    color: #2e7d32;
+    font-size: 0.9em;
+}
+
+.adjustment-badge {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    background: #4caf50;
+    color: white;
+    font-size: 0.7em;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+.completed-workout {
+    border: 2px solid #4caf50 !important;
+}
+
+.workout-item.completed {
+    background: #e8f5e8;
+    border-left: 3px solid #4caf50;
 }
 
 .fueling-notes {
@@ -273,6 +339,11 @@ input:focus, select:focus {
     background: #f0f3d3;
 }
 
+.calendar-day.completed-workout {
+    background: #f0fff0;
+    border-left: 4px solid #4caf50;
+}
+
 .day-number {
     font-weight: bold;
     margin-bottom: 5px;
@@ -293,7 +364,11 @@ input:focus, select:focus {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* FIX: Removed left border */
+}
+
+.workout-item.completed {
+    background: #e8f5e8;
+    border-left: 3px solid #4caf50;
 }
 
 .nutrition-info {
@@ -352,6 +427,18 @@ input:focus, select:focus {
     border-radius: 8px;
 }
 
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
 .day-detail-modal {
     display: none;
     position: fixed;
@@ -371,10 +458,17 @@ input:focus, select:focus {
     background: white;
     padding: 30px;
     border-radius: 15px;
-    max-width: 600px;
+    max-width: 700px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 .modal-close {
@@ -395,6 +489,12 @@ input:focus, select:focus {
     padding: 15px;
     border-radius: 10px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.day-list-item:hover {
+    transform: translateY(-2px);
 }
 
 .day-list-item.race-day {
@@ -410,6 +510,11 @@ input:focus, select:focus {
 .day-list-item.today {
     background: #E6FAFC;
     border: 2px solid #006989;
+}
+
+.day-list-item.completed-workout {
+    background: #f0fff0;
+    border-left: 4px solid #4caf50;
 }
 
 .day-list-header {
@@ -433,9 +538,91 @@ input:focus, select:focus {
     color: #666;
 }
 
-/* --- RESPONSIVE FIX --- */
+/* Completion Form Styles */
+.completion-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 16, 32, 0.8);
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-/* On small screens, hide the grid and show the list */
+.completion-modal .modal-content {
+    position: relative;
+    transform: none;
+    top: auto;
+    left: auto;
+    max-width: 500px;
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+}
+
+.completion-modal h3 {
+    color: #0F1020;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.completion-modal .form-group {
+    margin-bottom: 20px;
+}
+
+.completion-modal input[type="range"] {
+    width: 80%;
+    margin-right: 10px;
+}
+
+.completion-modal button {
+    background: #006989;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    margin: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.completion-modal button:hover {
+    filter: brightness(1.1);
+}
+
+/* Adjustment Notification */
+.adjustment-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #e8f5e8;
+    border: 2px solid #4caf50;
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 400px;
+    z-index: 1002;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.adjustment-notification h4 {
+    color: #2e7d32;
+    margin-bottom: 10px;
+}
+
+.adjustment-notification button {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+/* Responsive Design */
 @media (max-width: 1024px) {
     .calendar-grid {
         display: none;
@@ -443,14 +630,46 @@ input:focus, select:focus {
     .mobile-list {
         display: block;
     }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .macro-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
-/* On large screens, show the grid and hide the list */
 @media (min-width: 1025px) {
     .calendar-grid {
         display: grid;
     }
     .mobile-list {
         display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .header h1 {
+        font-size: 2em;
+    }
+    
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+    
+    .macro-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .calendar-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .legend {
+        flex-direction: column;
+        gap: 10px;
     }
 }
