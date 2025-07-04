@@ -39,10 +39,9 @@ const workoutManager = {
             const workouts = activities.slice(0, 3);
             let hasRace = false;
             
-            // Check if any workout is a race
+            // Check if any workout is a race using the category field
             workouts.forEach(workout => {
-                const name = (workout.name || '').toLowerCase();
-                if (name.includes('race') || name.includes('triathlon') || name.includes('marathon')) {
+                if (workout.category === 'RACE_A' || workout.category === 'RACE_B' || workout.category === 'RACE_C') {
                     hasRace = true;
                 }
             });
@@ -69,7 +68,7 @@ const workoutManager = {
         
         workouts.forEach((workout, index) => {
             const name = (workout.name || '').toLowerCase();
-            const isRace = name.includes('race') || name.includes('triathlon') || name.includes('marathon');
+            const isRace = workout.category === 'RACE_A' || workout.category === 'RACE_B' || workout.category === 'RACE_C';
             const currentDuration = Math.round((workout.moving_time || workout.duration || 3600) / 60);
             
             const workoutDiv = document.createElement('div');
