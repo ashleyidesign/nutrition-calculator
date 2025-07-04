@@ -1,11 +1,10 @@
-// Nutrition Calculation Module - Updated with Fuelin's Methodology
+// Nutrition Calculation Module - V3 with specific g/kg targets
 const nutritionCalculator = {
     /**
      * Main calculation function.
-     * Determines the "traffic light" color for the day and calculates macros accordingly.
+     * This function now primarily acts as a wrapper for the new calculateMacros function.
      */
-    calculate(bodyWeightLbs = null, goals = null, workoutType = null, duration = null, isCarboLoading = false) {
-        // --- FIX: Only query the DOM if values are not passed in as arguments ---
+    calculate(bodyWeightLbs = null, goals = null, workoutType = null, duration = null, isRaceDay = false, isPostRace = false, isCarboLoading = false) {
         const bw = bodyWeightLbs !== null ? bodyWeightLbs : parseInt(document.getElementById('bodyWeight').value);
         const currentGoals = goals !== null ? goals : document.getElementById('goals').value;
         const wt = workoutType !== null ? workoutType : document.getElementById('workoutType').value;
@@ -13,154 +12,119 @@ const nutritionCalculator = {
         
         const bodyWeightKg = bw * 0.453592;
 
-        console.log(`Calculating (Fuelin Method): ${bw}lbs (${bodyWeightKg.toFixed(2)}kg), Goal: ${currentGoals}, Workout: ${wt}, Duration: ${dur}min, Carb Loading: ${isCarboLoading}`);
+        console.log(`Calculating (V3): ${bw}lbs, Goal: ${currentGoals}, Type: ${wt}, Dur: ${dur}min, Race: ${isRaceDay}, PostRace: ${isPostRace}, CarbLoad: ${isCarboLoading}`);
 
-        // 1. Set Protein and Fat based on Fuelin's core recommendations
-        const dailyProtein = this.calculateProtein(bodyWeightKg, currentGoals);
-        const dailyFat = this.calculateFat(bodyWeightKg, currentGoals);
+        const macros = this.calculateMacros(bodyWeightKg, wt, dur, isRaceDay, isPostRace, isCarboLoading, currentGoals);
 
-        // 2. Determine daily carbs using the "Traffic Light" system
-        const dailyCarbs = this.calculateCarbohydrates(bodyWeightKg, wt, dur, currentGoals, isCarboLoading);
+        const dailyCalories = (macros.protein * 4) + (macros.carbs * 4) + (macros.fat * 9);
 
-        // 3. Calculate total calories from macros
-        const dailyCalories = (dailyProtein * 4) + (dailyCarbs * 4) + (dailyFat * 9);
+        const fueling = this.calculateWorkoutFueling(wt, dur, isRaceDay);
 
-        console.log(`Results: ${dailyCalories} cal, ${dailyProtein}p, ${dailyCarbs}c, ${dailyFat}f`);
-
-        // 4. Calculate workout-specific fueling
-        const fueling = this.calculateWorkoutFueling(wt, dur);
-
-        // 5. Update the UI *only if* the elements exist (i.e., we are on index.html)
         if (document.getElementById('totalCalories')) {
-            this.updateNutritionDisplay(dailyCalories, dailyProtein, dailyCarbs, dailyFat, fueling);
+            this.updateNutritionDisplay(dailyCalories, macros.protein, macros.carbs, macros.fat, fueling);
         }
 
-        // Always return the calculated values
         return {
             calories: Math.round(dailyCalories),
-            protein: dailyProtein,
-            carbs: dailyCarbs,
-            fat: dailyFat,
+            ...macros,
             fueling: fueling
         };
     },
 
     /**
-     * Calculates protein based on body weight.
-     * Fuelin recommends 2.0-2.5 g/kg. We'll use 2.2 as a baseline.
+     * NEW CORE LOGIC: Calculates macros based on specific g/kg targets from your screenshots.
      */
-    calculateProtein(bodyWeightKg, goals) {
-        let multiplier = 2.2; // g/kg
-        if (goals === 'performance') {
-            multiplier = 2.5;
+    calculateMacros(bodyWeightKg, workoutType, duration, isRaceDay, isPostRace, isCarboLoading, goals) {
+        let p_mult = 1.8, f_mult = 1.0, c_mult = 3.0; // Default multipliers
+
+        if (isRaceDay) {
+            // Targets from Jul 12 screenshot
+            p_mult = 2.2; 
+            f_mult = 1.7;
+            c_mult = 8.6;
+        } else if (isPostRace) {
+            // Targets from Jul 13 screenshot
+            p_mult = 1.7;
+            f_mult = 1.0;
+            c_mult = 5.2;
+        } else if (isCarboLoading) {
+            // Targets from Jul 11 screenshot
+            p_mult = 1.7;
+            f_mult = 1.0;
+            c_mult = 8.2;
+        } else {
+            // Non-event day logic based on workout type
+            switch (workoutType) {
+                case 'none': // True Rest Day
+                case 'easy': // Low Volume day like Jul 8
+                    p_mult = 1.7;
+                    f_mult = 1.0;
+                    c_mult = 2.4;
+                    break;
+                case 'endurance': // Like Jul 9
+                    p_mult = 1.8;
+                    f_mult = 1.1;
+                    c_mult = 4.3 + (duration > 120 ? 1.0 : 0); // Add carbs for longer duration
+                    break;
+                case 'tempo':
+                case 'threshold':
+                case 'intervals': // High intensity/volume like Jul 10
+                     p_mult = 1.7;
+                     f_mult = 1.0;
+                     c_mult = 6.4;
+                     break;
+                default:
+                    p_mult = 1.7;
+                    f_mult = 1.0;
+                    c_mult = 2.5;
+            }
         }
-        return Math.round(bodyWeightKg * multiplier);
+        
+        // Adjust for goals (only for non-event days)
+        if (!isRaceDay && !isPostRace && !isCarboLoading && goals === 'weight-loss') {
+            f_mult = Math.max(0.8, f_mult - 0.2);
+            c_mult = Math.max(2.0, c_mult - 0.5);
+        }
+
+        return {
+            protein: Math.round(bodyWeightKg * p_mult),
+            fat: Math.round(bodyWeightKg * f_mult),
+            carbs: Math.round(bodyWeightKg * c_mult)
+        };
     },
 
-    /**
-     * Calculates fat based on body weight.
-     * Fuelin recommends 0.9-1.2 g/kg. We'll use 1.0 as a baseline.
-     */
-    calculateFat(bodyWeightKg, goals) {
-        let multiplier = 1.0; // g/kg
-        if (goals === 'weight-loss') {
-            multiplier = 0.9;
-        }
-        return Math.round(bodyWeightKg * multiplier);
-    },
-
-    /**
-     * Calculates carbohydrates using the "Traffic Light" system.
-     * Red (Rest/Low), Yellow (Moderate), Green (High-Intensity).
-     */
-    calculateCarbohydrates(bodyWeightKg, workoutType, duration, goals, isCarboLoading) {
-        let carbMultiplier; // This will be our g/kg multiplier
-
-        // Determine the "color" for the day based on workout type
-        switch (workoutType) {
-            case 'none': // RED DAY
-                carbMultiplier = 2.5;
-                break;
-            case 'easy':
-            case 'strength': // YELLOW DAY
-                carbMultiplier = 3.5;
-                break;
-            case 'endurance': // YELLOW/GREEN DAY
-                carbMultiplier = 4.5;
-                break;
-            case 'tempo':
-            case 'threshold': // GREEN DAY
-                carbMultiplier = 6.0;
-                break;
-            case 'intervals': // HIGH GREEN DAY
-                carbMultiplier = 7.0;
-                break;
-            default:
-                carbMultiplier = 3.0;
-        }
-
-        // Adjust for duration on longer workouts
-        if (duration > 90) {
-            carbMultiplier += 1.0;
-        }
-        if (duration > 150) {
-            carbMultiplier += 1.5;
-        }
-
-        // Adjust for goals
-        if (goals === 'performance') {
-            carbMultiplier += 1.0;
-        }
-        if (goals === 'weight-loss') {
-            carbMultiplier = Math.max(2.0, carbMultiplier - 1.0);
-        }
-
-        // Apply carb-loading multiplier if applicable
-        if (isCarboLoading) {
-            carbMultiplier *= 1.75;
-            console.log("Applying carb loading. New carb multiplier:", carbMultiplier);
-        }
-
-        return Math.round(bodyWeightKg * carbMultiplier);
-    },
-
-    /**
-     * Calculates in-workout fueling based on duration and intensity.
-     */
-    calculateWorkoutFueling(workoutType, duration) {
-        let duringWorkoutCarbs = 0; // g/hr
+    calculateWorkoutFueling(workoutType, duration, isRaceDay) {
+        let duringWorkoutCarbs = 0;
         let fuelingTips = [];
 
-        if (workoutType === 'none' || duration < 60) {
-            fuelingTips.push('No in-session fueling required for workouts under 60 minutes.');
+        if (isRaceDay) {
+            // Your app isn't giving you race fueling, so we will!
+            duringWorkoutCarbs = 90;
+            fuelingTips.push('RACE FUEL: Aim for 90-120g carbs/hr. This is your primary goal.');
+            fuelingTips.push('Use a mix of gels, drinks, and solids if tolerated.');
+            fuelingTips.push('Practice this fueling strategy in training!');
         } else if (duration >= 60 && duration <= 90) {
             duringWorkoutCarbs = 40;
             fuelingTips.push('Start fueling within the first 15 minutes.');
-            fuelingTips.push('Aim for 40-70g of carbs per hour.');
-        } else { // 90+ minutes
+        } else if (duration > 90) {
+            duringWorkoutCarbs = 60;
             if (['tempo', 'threshold', 'intervals'].includes(workoutType)) {
                 duringWorkoutCarbs = 80;
-                fuelingTips.push('Aim for 60-90g of carbs per hour. Use multiple transportable carbs (glucose:fructose).');
-            } else {
-                duringWorkoutCarbs = 60;
-                fuelingTips.push('Aim for 40-70g of carbs per hour.');
             }
-            fuelingTips.push('Start fueling within the first 10-15 minutes.');
-            fuelingTips.push('Take smaller doses frequently to avoid GI distress.');
+            fuelingTips.push('Start fueling early and dose frequently.');
+        } else {
+            fuelingTips.push('No in-session fueling required for this workout.');
         }
 
         return {
             preWorkoutCarbs: 'Varies',
             duringWorkoutCarbs: duringWorkoutCarbs,
             postWorkoutCarbs: 'Varies',
-            fluidIntake: 500,
+            fluidIntake: 750,
             fuelingTips
         };
     },
-
-    /**
-     * Updates the UI with the calculated nutrition plan.
-     */
+    
     updateNutritionDisplay(calories, protein, carbs, fat, fueling) {
         document.getElementById('totalCalories').textContent = Math.round(calories);
         document.getElementById('totalProtein').textContent = protein + 'g';
