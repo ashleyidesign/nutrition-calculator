@@ -8,16 +8,17 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 20px;
+    padding: 0;
 }
 
 .container {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     background: white;
-    border-radius: 15px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    overflow: hidden;
+    min-height: 100vh;
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;
 }
 
 .header {
@@ -39,6 +40,26 @@ body {
 
 .main-content {
     padding: 30px;
+    max-width: 100%;
+}
+
+/* Two-column layout for daily calculator */
+.daily-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.daily-layout .left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.daily-layout .right-column {
+    position: sticky;
+    top: 30px;
 }
 
 .section {
@@ -98,6 +119,7 @@ input:focus, select:focus {
     transition: transform 0.2s;
     display: inline-block;
     margin-right: 10px;
+    text-decoration: none;
 }
 
 .button:hover {
@@ -223,12 +245,30 @@ input:focus, select:focus {
     margin-top: 15px;
 }
 
-@media (max-width: 768px) {
+/* Mobile responsive */
+@media (max-width: 1024px) {
+    .daily-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .daily-layout .right-column {
+        position: static;
+    }
+    
+    .main-content {
+        padding: 20px;
+    }
+    
     .form-row {
         grid-template-columns: 1fr;
     }
     
     .macro-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .header h1 {
+        font-size: 2em;
     }
 }
