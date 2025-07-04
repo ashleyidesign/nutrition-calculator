@@ -20,24 +20,25 @@ const calendarManager = {
     
     init() {
         this.updateMonthYear();
-        document.getElementById('loadCalendarBtn')?.addEventListener('click', () => this.loadCalendarData());
         
-        // *** NEW: Add event listeners for settings changes ***
+        // *** FIX: Automatically load the calendar on page start ***
+        this.loadCalendarData(); 
+        
         document.getElementById('goals')?.addEventListener('change', () => this.handleSettingsChange());
         document.getElementById('bodyWeight')?.addEventListener('change', () => this.handleSettingsChange());
+        document.getElementById('apiKey')?.addEventListener('change', () => this.handleSettingsChange());
 
-        // Modal close functionality
         document.querySelector('.day-detail-modal')?.addEventListener('click', (e) => this.handleModalClick(e));
         document.querySelector('.modal-close')?.addEventListener('click', () => this.closeModal());
     },
     
-    // *** NEW: Recalculate calendar when settings change ***
     handleSettingsChange() {
         this.bodyWeight = parseInt(document.getElementById('bodyWeight').value);
         this.goals = document.getElementById('goals').value;
-        // Re-render the calendar if data already exists
         if (this.events.length > 0) {
             this.renderCalendar();
+        } else {
+            this.loadCalendarData();
         }
     },
 
@@ -47,12 +48,13 @@ const calendarManager = {
         this.goals = document.getElementById('goals').value;
         
         if (!apiKey) {
-            alert('Please enter your API key');
+            document.getElementById('loadingState').innerHTML = `<h3>Please enter your Intervals.icu API Key</h3>`;
             return;
         }
         
         const loadingState = document.getElementById('loadingState');
-        loadingState.innerHTML = '<h3>Loading your nutrition calendar...</h3><p>Fetching workouts and races from Intervals.icu</p>';
+        loadingState.innerHTML = '<h3>Loading your nutrition calendar...</h3>';
+        loadingState.style.display = 'block';
         
         try {
             const startDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 1);
@@ -70,7 +72,7 @@ const calendarManager = {
             this.renderCalendar();
         } catch (error) {
             console.error('Calendar loading error:', error);
-            loadingState.innerHTML = `<h3>Error loading calendar</h3><p>${error.message}</p>`;
+            loadingState.innerHTML = `<h3>Error loading calendar. Check your API key.</h3><p>${error.message}</p>`;
         }
     },
     
@@ -80,7 +82,6 @@ const calendarManager = {
         this.updateMonthYear();
         
         const grid = document.getElementById('calendarGrid');
-        // Clear old days, keeping header row
         grid.innerHTML = `
             <div class="calendar-header-cell">Sun</div><div class="calendar-header-cell">Mon</div>
             <div class="calendar-header-cell">Tue</div><div class="calendar-header-cell">Wed</div>
@@ -317,8 +318,7 @@ const calendarManager = {
     },
     
     updateMonthYear() {
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        document.getElementById('monthYear').textContent = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+        document.getElementById('monthYear').textContent = `${this.currentDate.toLocaleDateString('en-US', { month: 'long' })} ${this.currentDate.getFullYear()}`;
     },
     
     formatDate(date) {
