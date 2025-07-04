@@ -49,7 +49,7 @@ body {
     padding: 25px;
     background: #f8f9fa;
     border-radius: 10px;
-    border-left: 4px solid #006989;
+    /* FIX: Removed left border */
 }
 
 .section h2 {
@@ -121,7 +121,7 @@ input:focus, select:focus {
     padding: 25px;
     margin-bottom: 20px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    border-left: 4px solid #B6C454;
+    /* FIX: Removed left border */
 }
 
 .nutrition-card h3 {
@@ -268,14 +268,9 @@ input:focus, select:focus {
 .calendar-day.race-day, .workout-item.race-a {
     background: #ffebee;
 }
-.calendar-day.race-day {
-     border-left-color: #f44336;
-}
-
 
 .calendar-day.carb-loading, .workout-item.race-b {
     background: #f0f3d3;
-    border-left-color: #B6C454;
 }
 
 .day-number {
@@ -294,11 +289,11 @@ input:focus, select:focus {
     padding: 3px 5px;
     margin: 2px 0;
     border-radius: 3px;
-    border-left: 3px solid #006989;
     font-size: 0.8em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    /* FIX: Removed left border */
 }
 
 .nutrition-info {
