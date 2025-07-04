@@ -411,8 +411,8 @@
     </div>
 
     <!-- Day Detail Modal -->
-    <div class="day-detail-modal" id="dayDetailModal">
-        <div class="modal-content">
+    <div class="day-detail-modal" id="dayDetailModal" onclick="calendarManager.handleModalClick(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <h2 id="modalDate">Day Details</h2>
                 <button class="modal-close" onclick="calendarManager.closeModal()">×</button>
