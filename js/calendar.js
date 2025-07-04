@@ -210,12 +210,13 @@ const calendarManager = {
             return { raceInfo, isCarboLoading: false, isPostRace: false };
         }
 
-        const upcomingRaces = this.findUpcomingRaces(date, 3);
+        // *** FIX: Changed look-ahead window from 3 to 4 days ***
+        const upcomingRaces = this.findUpcomingRaces(date, 4); 
         const importantRace = upcomingRaces.find(r => r.category === 'RACE_A' || r.category === 'RACE_B');
+        
         if (importantRace) {
             const raceDate = new Date(importantRace.start_date_local.split('T')[0] + 'T12:00:00');
             const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
-            // *** FIX: Changed carb loading window to 3 days ***
             if (daysUntilRace >= 1 && daysUntilRace <= 3) {
                 isCarboLoading = true;
             }
@@ -311,25 +312,3 @@ const calendarManager = {
     },
     
     goToToday() {
-        this.currentDate = new Date();
-        this.renderCalendar();
-    },
-    
-    updateMonthYear() {
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        const monthYear = document.getElementById('monthYear');
-        if (monthYear) monthYear.textContent = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
-    },
-    
-    formatDate(date) {
-        return date.toISOString().split('T')[0];
-    },
-    
-    formatDateDisplay(date) {
-        return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    },
-    
-    isSameDate(date1, date2) {
-        return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
-    }
-};
