@@ -201,6 +201,8 @@ const calendarManager = {
             mobileList.appendChild(noEventsDiv);
         }
     },
+    
+    createDayElement(day, isOtherMonth, fullDate) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
         
