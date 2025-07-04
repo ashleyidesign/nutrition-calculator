@@ -595,6 +595,13 @@ const calendarManager = {
         document.getElementById('dayDetailModal').style.display = 'none';
     },
     
+    handleModalClick(event) {
+        // Close modal when clicking on the background (not the content)
+        if (event.target === event.currentTarget) {
+            this.closeModal();
+        }
+    },
+    
     previousMonth() {
         this.currentDate.setMonth(this.currentDate.getMonth() - 1);
         this.renderCalendar();
