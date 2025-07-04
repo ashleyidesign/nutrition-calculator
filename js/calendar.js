@@ -514,7 +514,7 @@ const calendarManager = {
         
         modalDate.textContent = this.formatDateDisplay(date);
         
-        const nutrition = this.calculateDayNutrition(date, dayEvents, isCarboLoading);
+const nutrition = nutritionCalculator.calculate(this.bodyWeight, goals, highestIntensity, totalDuration, isCarboLoading);
         
         let content = '<div class="section">';
         
