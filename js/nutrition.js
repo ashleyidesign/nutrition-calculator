@@ -57,9 +57,10 @@ const nutritionCalculator = {
             switch (workoutType) {
                 case 'none': // True Rest Day
                 case 'easy': // Low Volume day like Jul 8
-                    p_mult = 1.7;
-                    f_mult = 1.0;
-                    c_mult = 2.4;
+                    // *** FIX: Updated to match your specific targets of 150p/80f/170c ***
+                    p_mult = 1.72; // ~150g
+                    f_mult = 0.92; // ~80g
+                    c_mult = 1.95; // ~170g
                     break;
                 case 'endurance': // Like Jul 9
                     p_mult = 1.8;
