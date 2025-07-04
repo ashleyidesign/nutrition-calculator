@@ -44,6 +44,7 @@ const calendarManager = {
             document.getElementById('legend').style.display = 'flex';
             document.getElementById('calendarHeader').style.display = 'flex';
             document.getElementById('calendarGrid').style.display = 'grid';
+            document.getElementById('mobileList').style.display = 'block';
             
             this.renderCalendar();
             
@@ -65,24 +66,38 @@ const calendarManager = {
         const existingDays = grid.querySelectorAll('.calendar-day');
         existingDays.forEach(day => day.remove());
         
+        // Clear mobile list
+        const mobileList = document.getElementById('mobileList');
+        mobileList.innerHTML = '';
+        
         // Get first day of month and number of days
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
         const startingDayOfWeek = firstDay.getDay();
         
+        // Store all days for mobile list
+        const allDays = [];
+        
         // Add previous month's trailing days
         const prevMonth = new Date(year, month, 0);
         for (let i = startingDayOfWeek - 1; i >= 0; i--) {
             const day = prevMonth.getDate() - i;
-            const dayElement = this.createDayElement(day, true, new Date(year, month - 1, day));
+            const fullDate = new Date(year, month - 1, day);
+            const dayElement = this.createDayElement(day, true, fullDate);
             grid.appendChild(dayElement);
+            
+            // Only add current month days to mobile list
         }
         
         // Add current month's days
         for (let day = 1; day <= daysInMonth; day++) {
-            const dayElement = this.createDayElement(day, false, new Date(year, month, day));
+            const fullDate = new Date(year, month, day);
+            const dayElement = this.createDayElement(day, false, fullDate);
             grid.appendChild(dayElement);
+            
+            // Add to mobile list
+            allDays.push({ day, fullDate, isCurrentMonth: true });
         }
         
         // Add next month's leading days to fill the grid
@@ -90,12 +105,102 @@ const calendarManager = {
         const cellsNeeded = Math.ceil(totalCells / 7) * 7 - totalCells + 7;
         
         for (let day = 1; day <= cellsNeeded; day++) {
-            const dayElement = this.createDayElement(day, true, new Date(year, month + 1, day));
+            const fullDate = new Date(year, month + 1, day);
+            const dayElement = this.createDayElement(day, true, fullDate);
             grid.appendChild(dayElement);
         }
+        
+        // Render mobile list for current month only
+        this.renderMobileList(allDays);
     },
     
-    createDayElement(day, isOtherMonth, fullDate) {
+    renderMobileList(allDays) {
+        const mobileList = document.getElementById('mobileList');
+        
+        allDays.forEach(({ day, fullDate, isCurrentMonth }) => {
+            if (!isCurrentMonth) return;
+            
+            const dayEvents = this.getEventsForDate(fullDate);
+            const { raceInfo, isCarboLoading } = this.analyzeDayType(fullDate, dayEvents);
+            
+            // Skip days with no events and not carb loading (for cleaner mobile view)
+            if (dayEvents.length === 0 && !isCarboLoading) return;
+            
+            const listItem = document.createElement('div');
+            listItem.className = 'day-list-item';
+            
+            // Check if it's today
+            const today = new Date();
+            if (this.isSameDate(fullDate, today)) {
+                listItem.classList.add('today');
+            }
+            
+            if (raceInfo) {
+                listItem.classList.add('race-day');
+            } else if (isCarboLoading) {
+                listItem.classList.add('carb-loading');
+            }
+            
+            // Header
+            const header = document.createElement('div');
+            header.className = 'day-list-header';
+            
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'day-list-date';
+            dateDiv.textContent = this.formatDateDisplay(fullDate);
+            
+            const badgeDiv = document.createElement('div');
+            if (raceInfo) {
+                badgeDiv.innerHTML = `<span style="background: #f44336; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">${raceInfo.category.replace('RACE_', '')} RACE</span>`;
+            } else if (isCarboLoading) {
+                badgeDiv.innerHTML = `<span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">CARB LOADING</span>`;
+            }
+            
+            header.appendChild(dateDiv);
+            header.appendChild(badgeDiv);
+            listItem.appendChild(header);
+            
+            // Workouts
+            if (dayEvents.length > 0) {
+                const workoutsDiv = document.createElement('div');
+                workoutsDiv.className = 'day-list-workouts';
+                
+                dayEvents.forEach(event => {
+                    const duration = Math.round((event.moving_time || event.duration || 3600) / 60);
+                    const workoutDiv = document.createElement('div');
+                    workoutDiv.style.marginBottom = '5px';
+                    workoutDiv.innerHTML = `<strong>${event.name || event.type}</strong> - ${duration} minutes`;
+                    workoutsDiv.appendChild(workoutDiv);
+                });
+                
+                listItem.appendChild(workoutsDiv);
+            }
+            
+            // Nutrition
+            const nutrition = this.calculateDayNutrition(fullDate, dayEvents, isCarboLoading);
+            const nutritionDiv = document.createElement('div');
+            nutritionDiv.className = 'day-list-nutrition';
+            nutritionDiv.innerHTML = `<strong>${nutrition.calories}</strong> cal • <strong>${nutrition.carbs}g</strong> carbs • <strong>${nutrition.protein}g</strong> protein`;
+            listItem.appendChild(nutritionDiv);
+            
+            // Add click handler
+            listItem.addEventListener('click', () => {
+                this.showDayDetails(fullDate, dayEvents, isCarboLoading, raceInfo);
+            });
+            
+            mobileList.appendChild(listItem);
+        });
+        
+        // Add message if no events
+        if (mobileList.children.length === 0) {
+            const noEventsDiv = document.createElement('div');
+            noEventsDiv.className = 'day-list-item';
+            noEventsDiv.style.textAlign = 'center';
+            noEventsDiv.style.color = '#666';
+            noEventsDiv.innerHTML = '<h3>No workouts or races this month</h3><p>Enjoy your rest days!</p>';
+            mobileList.appendChild(noEventsDiv);
+        }
+    },
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
         
