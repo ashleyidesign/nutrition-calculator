@@ -21,6 +21,7 @@ const nutritionCalculator = {
     calculateMacros(bodyWeightKg, workoutType, duration, isRaceDay, isPostRace, isCarboLoading, goals) {
         let p_mult, f_mult, c_mult;
 
+        // Step 1: Set the baseline macros based on the type of day
         if (isRaceDay) {
             p_mult = 2.2; f_mult = 1.7; c_mult = 8.6;
         } else if (isPostRace) {
@@ -28,10 +29,11 @@ const nutritionCalculator = {
         } else if (isCarboLoading) {
             p_mult = 1.7; f_mult = 1.0; c_mult = 8.2;
         } else {
+            // This is a regular training or rest day. Set "Maintenance" as the baseline.
             switch (workoutType) {
                 case 'none':
                 case 'easy':
-                    p_mult = 1.72; f_mult = 0.92; c_mult = 1.95;
+                    p_mult = 1.72; f_mult = 0.92; c_mult = 1.95; // ~2000 cal baseline
                     break;
                 case 'endurance':
                     p_mult = 1.8; f_mult = 1.1; c_mult = 4.3 + (duration > 120 ? 1.0 : 0);
@@ -46,15 +48,29 @@ const nutritionCalculator = {
             }
         }
         
-        // *** FIX: Apply weight loss deficit ONLY to training days, not rest days ***
-        if (goals === 'weight-loss' && !isRaceDay && !isPostRace && !isCarboLoading) {
-            if (workoutType !== 'none' && workoutType !== 'easy') {
-                f_mult = Math.max(0.8, f_mult - 0.2);
-                c_mult = Math.max(2.0, c_mult - 1.0);
+        // Step 2: If it's a regular day, apply adjustments based on the selected goal
+        const isRegularDay = !isRaceDay && !isPostRace && !isCarboLoading;
+        if (isRegularDay) {
+            switch(goals) {
+                case 'weight-loss':
+                    // On rest/easy days, no change is needed (targets are already set).
+                    // On harder days, create a deficit.
+                    if (workoutType !== 'none' && workoutType !== 'easy') {
+                        f_mult = Math.max(0.8, f_mult - 0.2);
+                        c_mult = Math.max(2.0, c_mult - 1.0);
+                    }
+                    break;
+                
+                case 'performance':
+                    // Add a surplus for performance focus on all regular days.
+                    p_mult += 0.2;
+                    c_mult += 1.5;
+                    break;
+
+                case 'maintenance':
+                    // No changes needed, use the baseline determined in Step 1.
+                    break;
             }
-        } else if (goals === 'maintenance' && (workoutType === 'none' || workoutType === 'easy')) {
-             // For maintenance, use the ~2000 calorie targets on rest days
-            p_mult = 1.72; f_mult = 0.92; c_mult = 1.95;
         }
 
         return {
