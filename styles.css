@@ -246,6 +246,46 @@ input:focus, select:focus {
 }
 
 /* Calendar specific styles with LARGER TEXT */
+.calendar-container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 0 10px;
+}
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-btn {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.nav-btn:hover {
+    background: #1976D2;
+}
+
+.month-year {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #333;
+}
+
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
