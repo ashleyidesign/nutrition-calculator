@@ -5,161 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workout Nutrition Calculator</title>
     <link rel="stylesheet" href="styles.css">
+
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏃‍♀️ Workout Nutrition Calculator</h1>
-            <p>Daily macros + workout fueling recommendations</p>
-            <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                Version 4.0 - Refactored Architecture
-            </div>
+            <h1>🗓️ Nutrition Calendar</h1>
+            <p>Plan your nutrition strategy for training and racing</p>
         </div>
 
-        <div class="main-content">
-            <div class="daily-layout">
-                <div class="left-column">
-                    <div class="section">
-                        <h2>🔗 Load Workout from Intervals.icu</h2>
-                        
-                        <div class="form-group">
-                            <label for="apiKey">API Key</label>
-                            <input type="password" id="apiKey" placeholder="Enter your API key" value="5b7vz3ozlxd42dqx0udbrq7e2">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="workoutDate">Workout Date</label>
-                            <input type="date" id="workoutDate">
-                        </div>
-                        
-                        <button class="button" onclick="workoutManager.loadWorkoutData()">Load Workout</button>
-                        <button class="button secondary" onclick="ui.toggleManualEntry()">Manual Entry</button>
-                        <a href="calendar.html" class="button" style="text-decoration: none; display: inline-block;">📅 Calendar View</a>
-                        
-                        <div id="workoutStatus"></div>
-                        
-                        <div class="race-override" id="raceOverride">
-                            <h3>🏁 Race Detected!</h3>
-                            <p>We found a race in your schedule. Please verify the details and adjust if needed:</p>
-                            <div id="raceWorkouts"></div>
-                            <div class="button-group">
-                                <button class="button" onclick="workoutManager.applyRaceOverride()">Calculate Race Nutrition</button>
-                                <button class="button secondary" onclick="workoutManager.cancelRaceOverride()">Cancel</button>
-                            </div>
-                        </div>
+        <div class="calendar-container">
+            <div class="section">
+                <h2>⚙️ Settings</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="apiKey">API Key</label>
+                        <input type="password" id="apiKey" placeholder="Enter your API key" value="5b7vz3ozlxd42dqx0udbrq7e2">
                     </div>
-
-                    <div class="section">
-                        <h2>👤 Your Profile</h2>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="bodyWeight">Body Weight (lbs)</label>
-                                <input type="number" id="bodyWeight" min="100" max="250" value="192">
-                            </div>
-                            <div class="form-group">
-                                <label for="goals">Current Goals</label>
-                                <select id="goals">
-                                    <option value="weight-loss">Weight Loss</option>
-                                    <option value="maintenance">Maintenance</option>
-                                    <option value="performance">Performance Focus</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="section" id="manualSection" style="display: none;">
-                        <h2>📊 Manual Workout Entry</h2>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="workoutType">Workout Type</label>
-                                <select id="workoutType">
-                                    <option value="none">Rest Day</option>
-                                    <option value="easy">Easy/Recovery</option>
-                                    <option value="endurance">Endurance (Zone 2)</option>
-                                    <option value="tempo">Tempo (Zone 3)</option>
-                                    <option value="threshold">Threshold (Zone 4)</option>
-                                    <option value="intervals">Intervals (Zone 5)</option>
-                                    <option value="strength">Strength Training</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="duration">Duration (minutes)</label>
-                                <input type="number" id="duration" min="0" max="480" value="60">
-                            </div>
-                        </div>
-
-                        <button class="button" onclick="nutritionCalculator.calculate()">Calculate My Nutrition Plan</button>
+                    <div class="form-group">
+                        <label for="bodyWeight">Body Weight (lbs)</label>
+                        <input type="number" id="bodyWeight" min="100" max="250" value="192">
                     </div>
                 </div>
-
-                <div class="right-column">
-                    <div class="results" id="results">
-                        <div class="section">
-                            <h2>🎯 Today's Nutrition Plan</h2>
-                            
-                            <div class="nutrition-card">
-                                <h3>Daily Macro Targets</h3>
-                                <div class="macro-grid">
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="totalCalories">0</div>
-                                        <div class="macro-label">Calories</div>
-                                    </div>
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="totalProtein">0g</div>
-                                        <div class="macro-label">Protein</div>
-                                    </div>
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="totalCarbs">0g</div>
-                                        <div class="macro-label">Carbs</div>
-                                    </div>
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="totalFat">0g</div>
-                                        <div class="macro-label">Fat</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="nutrition-card" id="fuelingCard">
-                                <h3>Workout Fueling Strategy</h3>
-                                <div class="macro-grid">
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="preWorkout">0g</div>
-                                        <div class="macro-label">Pre-Workout Carbs</div>
-                                    </div>
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="duringWorkout">0g</div>
-                                        <div class="macro-label">During (per hour)</div>
-                                    </div>
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="postWorkout">0g</div>
-                                        <div class="macro-label">Post-Workout Carbs</div>
-                                    </div>
-                                    <div class="macro-item">
-                                        <div class="macro-value" id="fluidIntake">0ml</div>
-                                        <div class="macro-label">Fluids (per hour)</div>
-                                    </div>
-                                </div>
-                                <div class="fueling-notes" id="fuelingNotes">
-                                    <h4>Fueling Notes</h4>
-                                    <ul id="fuelingTips">
-                                        <li>No specific fueling needed for this workout</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="goals">Current Goals</label>
+                        <select id="goals">
+                            <option value="weight-loss">Weight Loss</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="performance">Performance Focus</option>
+                        </select>
                     </div>
                 </div>
+                <button class="button" id="loadCalendarBtn">Load Calendar</button>
             </div>
+
+            <div class="legend" id="legend" style="display: none;">
+                <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #f44336;"></div><span>Race Day</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #B6C454;"></div><span>Carb Loading</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #006989; opacity: 0.5"></div><span>Post-Race Recovery</span></div>
+            </div>
+
+            <div class="calendar-header" id="calendarHeader" style="display: none;">
+                <div class="calendar-nav">
+                    <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
+                    <div class="month-year" id="monthYear"></div>
+                    <button class="nav-btn" onclick="calendarManager.nextMonth()">Next ›</button>
+                </div>
+                <button class="button" onclick="calendarManager.goToToday()">Today</button>
+            </div>
+
+            <div class="loading" id="loadingState">
+                <h3>Ready to load your nutrition calendar!</h3>
+                <p>Enter your settings and click "Load Calendar" to get started.</p>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid">
+                <div class="calendar-header-cell">Sun</div>
+                <div class="calendar-header-cell">Mon</div>
+                <div class="calendar-header-cell">Tue</div>
+                <div class="calendar-header-cell">Wed</div>
+                <div class="calendar-header-cell">Thu</div>
+                <div class="calendar-header-cell">Fri</div>
+                <div class="calendar-header-cell">Sat</div>
+            </div>
+            <div class="mobile-list" id="mobileList"></div>
+
         </div>
     </div>
 
-    <!-- Load JavaScript modules -->
+    <div class="day-detail-modal" id="dayDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalDate">Day Details</h2>
+                <button class="modal-close" onclick="calendarManager.closeModal()">×</button>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
     <script src="js/ui.js"></script>
     <script src="js/api.js"></script>
     <script src="js/nutrition.js"></script>
-    <script src="js/workouts.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/calendar.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🗓️ Nutrition Calendar Initialized');
+            calendarManager.init();
+        });
+    </script>
 </body>
 </html>
