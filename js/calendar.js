@@ -362,234 +362,125 @@ const calendarManager = {
         });
     },
     
-    calculateDayNutrition(date, dayEvents, isCarboLoading) {
-        // Base calculation - calculate nutrition without updating UI
-        let totalDuration = 0;
-        let highestIntensity = 'none';
+ calculateDayNutrition(date, dayEvents, isCarboLoading, goals = 'weight-loss') {
+    // Base calculation - calculate nutrition without updating UI
+    let totalDuration = 0;
+    let highestIntensity = 'none';
+    
+    const intensityRanking = {
+        'none': 0,
+        'easy': 1,
+        'endurance': 2,
+        'tempo': 3,
+        'threshold': 4,
+        'intervals': 5,
+        'strength': 2
+    };
+    
+    dayEvents.forEach(event => {
+        const duration = Math.round((event.moving_time || event.duration || 3600) / 60);
+        totalDuration += duration;
         
-        const intensityRanking = {
-            'none': 0,
-            'easy': 1,
-            'endurance': 2,
-            'tempo': 3,
-            'threshold': 4,
-            'intervals': 5,
-            'strength': 2
-        };
+        let workoutType = 'endurance';
+        if (event.category && event.category.startsWith('RACE_')) {
+            workoutType = 'threshold'; 
+        }
         
+        if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
+            highestIntensity = workoutType;
+        }
+    });
+
+    // Use the updated nutritionCalculator with all parameters
+    return nutritionCalculator.calculate(this.bodyWeight, goals, highestIntensity, totalDuration, isCarboLoading);
+},
+    
+showDayDetails(date, dayEvents, isCarboLoading, raceInfo) {
+    const modal = document.getElementById('dayDetailModal');
+    const modalDate = document.getElementById('modalDate');
+    const modalContent = document.getElementById('modalContent');
+
+    modalDate.textContent = this.formatDateDisplay(date);
+
+    // FIX: Define a default goal for the calendar context
+    const goals = 'weight-loss'; 
+
+    const nutrition = this.calculateDayNutrition(date, dayEvents, isCarboLoading, goals);
+
+    let content = '<div class="section">';
+    
+    // Day type header
+    if (raceInfo) {
+        content += `<h3>🏁 ${raceInfo.category.replace('RACE_', '')}-Priority Race Day</h3>`;
+    } else if (isCarboLoading) {
+        content += '<h3>🍝 Carb Loading Day</h3>';
+        const upcomingRaces = this.findUpcomingRaces(date, 5);
+        const importantRace = upcomingRaces.find(race => 
+            race.category === 'RACE_A' || race.category === 'RACE_B'
+        );
+        if (importantRace) {
+            const raceDateStr = importantRace.start_date_local.split('T')[0];
+            const raceDate = new Date(raceDateStr + 'T12:00:00');
+            const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
+            content += `<p>Preparing for <strong>${importantRace.name}</strong> in ${daysUntilRace} days</p>`;
+        }
+    } else {
+        content += '<h3>📅 Training Day</h3>';
+    }
+    
+    // Workouts
+    if (dayEvents.length > 0) {
+        content += '<h4>Scheduled Workouts:</h4><ul>';
         dayEvents.forEach(event => {
             const duration = Math.round((event.moving_time || event.duration || 3600) / 60);
-            totalDuration += duration;
-            
-            // Map workout type (simplified)
-            let workoutType = 'endurance';
+            content += `<li><strong>${event.name || event.type}</strong> - ${duration} minutes`;
             if (event.category && event.category.startsWith('RACE_')) {
-                workoutType = 'threshold'; // Assume race pace
+                content += ` <span style="color: #f44336; font-weight: bold;">[${event.category.replace('RACE_', '')} RACE]</span>`;
             }
-            
-            if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
-                highestIntensity = workoutType;
-            }
+            content += '</li>';
         });
-        
-        // Calculate nutrition manually without UI updates
-        let dailyCalories, dailyProtein, dailyFat, dailyCarbs;
-        const goals = 'weight-loss'; // Default for calendar view
-        
-        if (goals === 'weight-loss') {
-            // Check if this is a race day (high duration suggests race)
-            const isRaceDay = totalDuration > 180; // 3+ hours suggests race
-            
-            if (isRaceDay) {
-                // Race-specific macro calculations based on duration
-                if (totalDuration >= 240) { // 4+ hours = ultra-endurance
-                    dailyProtein = Math.round(this.bodyWeight * 0.94);
-                    dailyFat = Math.round(this.bodyWeight * 0.78);
-                    dailyCarbs = Math.round(this.bodyWeight * 3.9);
-                } else { // 3-4 hours = long race
-                    dailyProtein = Math.round(this.bodyWeight * 0.86);
-                    dailyFat = Math.round(this.bodyWeight * 0.65);
-                    dailyCarbs = Math.round(this.bodyWeight * 3.0);
-                }
-            } else {
-                // Regular training day calculations
-                dailyProtein = Math.round(this.bodyWeight * 0.78);
-                dailyFat = Math.round(this.bodyWeight * 0.41);
-                
-                // Carb formula based on workout intensity
-                if (highestIntensity === 'none') {
-                    dailyCarbs = Math.round(this.bodyWeight * 0.885);
-                } else {
-                    // Base carbs by intensity level
-                    const intensityMultipliers = {
-                        'easy': 1.0,
-                        'endurance': 1.1,
-                        'tempo': 1.6,
-                        'threshold': 1.7,
-                        'intervals': 1.8,
-                        'strength': 1.2
-                    };
-                    
-                    const baseCarbs = this.bodyWeight * intensityMultipliers[highestIntensity];
-                    
-                    // Adjust for duration
-                    let durationAdjustment = 1.0;
-                    if (totalDuration > 120) durationAdjustment = 1.1;
-                    else if (totalDuration > 90) durationAdjustment = 1.05;
-                    
-                    dailyCarbs = Math.round(baseCarbs * durationAdjustment);
-                }
-            }
-            
-            // Calculate total calories from macros
-            dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
-        }
-        
-        // Adjust for carb loading
-        if (isCarboLoading) {
-            const upcomingRaces = this.findUpcomingRaces(date, 5);
-            const importantRace = upcomingRaces.find(race => 
-                race.category === 'RACE_A' || race.category === 'RACE_B'
-            );
-            
-            if (importantRace) {
-                const raceDateStr = importantRace.start_date_local.split('T')[0];
-                const raceDate = new Date(raceDateStr + 'T12:00:00');
-                const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
-                
-                // Carb loading formula: increase carbs based on days until race
-                if (daysUntilRace >= 1 && daysUntilRace <= 3) {
-                    const carbMultiplier = 1.5 + (0.1 * (4 - daysUntilRace)); // 1.6x to 1.8x
-                    dailyCarbs = Math.round(dailyCarbs * carbMultiplier);
-                    dailyCalories = (dailyProtein * 4) + (dailyFat * 9) + (dailyCarbs * 4);
-                }
-            }
-        }
-        
-        // Calculate workout fueling
-        const bodyWeightKg = this.bodyWeight * 0.453592;
-        let preWorkoutCarbs = 0;
-        let duringWorkoutCarbs = 0;
-        let postWorkoutCarbs = 0;
-        let fluidIntake = 0;
-        let fuelingTips = [];
-        
-        if (highestIntensity === 'none') {
-            fuelingTips.push('Rest day - focus on recovery nutrition');
-        } else if (totalDuration < 60) {
-            preWorkoutCarbs = Math.round(bodyWeightKg * 0.5);
-            fluidIntake = 400;
-            postWorkoutCarbs = Math.round(bodyWeightKg * 0.8);
-            fuelingTips.push('Pre: 1-2 hours before workout');
-            fuelingTips.push('Post: Within 30 minutes after workout');
-        } else {
-            preWorkoutCarbs = Math.round(bodyWeightKg * 0.7);
-            duringWorkoutCarbs = totalDuration < 120 ? 25 : 35;
-            postWorkoutCarbs = Math.round(bodyWeightKg * 1.0);
-            fluidIntake = 500;
-            fuelingTips.push('Pre: 1-2 hours before workout');
-            fuelingTips.push('During: Start fueling after 60 minutes');
-            fuelingTips.push('Post: Within 30 minutes');
-        }
-        
-        return {
-            calories: dailyCalories,
-            protein: dailyProtein,
-            carbs: dailyCarbs,
-            fat: dailyFat,
-            fueling: {
-                preWorkoutCarbs,
-                duringWorkoutCarbs,
-                postWorkoutCarbs,
-                fluidIntake,
-                fuelingTips
-            }
-        };
-    },
+        content += '</ul>';
+    }
     
-    showDayDetails(date, dayEvents, isCarboLoading, raceInfo) {
-        const modal = document.getElementById('dayDetailModal');
-        const modalDate = document.getElementById('modalDate');
-        const modalContent = document.getElementById('modalContent');
-        
-        modalDate.textContent = this.formatDateDisplay(date);
-        
-const nutrition = nutritionCalculator.calculate(this.bodyWeight, goals, highestIntensity, totalDuration, isCarboLoading);
-        
-        let content = '<div class="section">';
-        
-        // Day type header
-        if (raceInfo) {
-            content += `<h3>🏁 ${raceInfo.category.replace('RACE_', '')}-Priority Race Day</h3>`;
-        } else if (isCarboLoading) {
-            content += '<h3>🍝 Carb Loading Day</h3>';
-            const upcomingRaces = this.findUpcomingRaces(date, 5);
-            const importantRace = upcomingRaces.find(race => 
-                race.category === 'RACE_A' || race.category === 'RACE_B'
-            );
-            if (importantRace) {
-                const raceDateStr = importantRace.start_date_local.split('T')[0];
-                const raceDate = new Date(raceDateStr + 'T12:00:00');
-                const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
-                content += `<p>Preparing for <strong>${importantRace.name}</strong> in ${daysUntilRace} days</p>`;
-            }
+    // Nutrition plan
+    content += '<h4>Daily Nutrition Target:</h4>';
+    content += '<div class="macro-grid" style="margin: 15px 0;">';
+    content += `<div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div>`;
+    content += `<div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div>`;
+    content += `<div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div>`;
+    content += `<div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div>`;
+    content += '</div>';
+    
+    // Carb loading guidance
+    if (isCarboLoading) {
+        content += '<div class="fueling-notes"><h4>Carb Loading Strategy:</h4><ul>';
+        content += '<li>Focus on easily digestible carbs (pasta, rice, bread)</li>';
+        content += '<li>Reduce fiber and fat intake slightly</li>';
+        content += '<li>Stay well hydrated</li>';
+        content += '<li>Avoid trying new foods</li>';
+        content += '</ul></div>';
+    }
+    
+    // Race day specific advice
+    if (raceInfo) {
+        const raceDuration = Math.round((raceInfo.moving_time || raceInfo.duration || 3600) / 60);
+        content += '<div class="fueling-notes"><h4>Race Day Strategy:</h4><ul>';
+        if (raceDuration > 60) {
+            content += `<li>Pre-race: ${nutrition.fueling.preWorkoutCarbs}g carbs 1-2 hours before</li>`;
+            content += `<li>During race: ${nutrition.fueling.duringWorkoutCarbs}g carbs per hour</li>`;
+            content += `<li>Hydration: ${nutrition.fueling.fluidIntake}ml per hour</li>`;
         } else {
-            content += '<h3>📅 Training Day</h3>';
+            content += '<li>Pre-race meal 2-3 hours before</li>';
+            content += '<li>Small carb snack 30-60 minutes before</li>';
         }
-        
-        // Workouts
-        if (dayEvents.length > 0) {
-            content += '<h4>Scheduled Workouts:</h4><ul>';
-            dayEvents.forEach(event => {
-                const duration = Math.round((event.moving_time || event.duration || 3600) / 60);
-                content += `<li><strong>${event.name || event.type}</strong> - ${duration} minutes`;
-                if (event.category && event.category.startsWith('RACE_')) {
-                    content += ` <span style="color: #f44336; font-weight: bold;">[${event.category.replace('RACE_', '')} RACE]</span>`;
-                }
-                content += '</li>';
-            });
-            content += '</ul>';
-        }
-        
-        // Nutrition plan
-        content += '<h4>Daily Nutrition Target:</h4>';
-        content += '<div class="macro-grid" style="margin: 15px 0;">';
-        content += `<div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div>`;
-        content += `<div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div>`;
-        content += `<div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div>`;
-        content += `<div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div>`;
-        content += '</div>';
-        
-        // Carb loading guidance
-        if (isCarboLoading) {
-            content += '<div class="fueling-notes"><h4>Carb Loading Strategy:</h4><ul>';
-            content += '<li>Focus on easily digestible carbs (pasta, rice, bread)</li>';
-            content += '<li>Reduce fiber and fat intake slightly</li>';
-            content += '<li>Stay well hydrated</li>';
-            content += '<li>Avoid trying new foods</li>';
-            content += '</ul></div>';
-        }
-        
-        // Race day specific advice
-        if (raceInfo) {
-            const raceDuration = Math.round((raceInfo.moving_time || raceInfo.duration || 3600) / 60);
-            content += '<div class="fueling-notes"><h4>Race Day Strategy:</h4><ul>';
-            if (raceDuration > 60) {
-                content += `<li>Pre-race: ${nutrition.fueling.preWorkoutCarbs}g carbs 1-2 hours before</li>`;
-                content += `<li>During race: ${nutrition.fueling.duringWorkoutCarbs}g carbs per hour</li>`;
-                content += `<li>Hydration: ${nutrition.fueling.fluidIntake}ml per hour</li>`;
-            } else {
-                content += '<li>Pre-race meal 2-3 hours before</li>';
-                content += '<li>Small carb snack 30-60 minutes before</li>';
-            }
-            content += '<li>Post-race: Focus on recovery nutrition within 30 minutes</li>';
-            content += '</ul></div>';
-        }
-        
-        content += '</div>';
-        modalContent.innerHTML = content;
-        modal.style.display = 'block';
-    },
+        content += '<li>Post-race: Focus on recovery nutrition within 30 minutes</li>';
+        content += '</ul></div>';
+    }
+    
+    content += '</div>';
+    modalContent.innerHTML = content;
+    modal.style.display = 'block';
+},
     
     closeModal() {
         document.getElementById('dayDetailModal').style.display = 'none';
