@@ -203,7 +203,6 @@ const calendarManager = {
         const yesterdayEvents = this.getEventsForDate(yesterday);
         if (yesterdayEvents.some(e => e.category?.startsWith('RACE_'))) {
             isPostRace = true;
-            // A post-race day cannot also be a race day or carb load day
             return { raceInfo: null, isCarboLoading: false, isPostRace: true };
         }
 
@@ -216,7 +215,8 @@ const calendarManager = {
         if (importantRace) {
             const raceDate = new Date(importantRace.start_date_local.split('T')[0] + 'T12:00:00');
             const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
-            if (daysUntilRace >= 1 && daysUntilRace <= 2) { // 2-day carb load
+            // *** FIX: Changed carb loading window to 3 days ***
+            if (daysUntilRace >= 1 && daysUntilRace <= 3) {
                 isCarboLoading = true;
             }
         }
@@ -245,13 +245,13 @@ const calendarManager = {
         let totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
         let highestIntensity = 'none';
         if (dayEvents.length > 0) {
-            highestIntensity = 'easy'; // Default to easy if there's any activity
+            highestIntensity = 'easy'; 
         }
         if (raceInfo) highestIntensity = 'threshold';
 
         return nutritionCalculator.calculate(
             this.bodyWeight, 
-            'performance', // Default to performance goal for calendar planning
+            'performance', 
             highestIntensity, 
             totalDuration,
             !!raceInfo,
