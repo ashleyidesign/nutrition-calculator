@@ -6,7 +6,8 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-color: #E6FAFC; /* New Background */
+    color: #342E37; /* New Primary Text */
     min-height: 100vh;
     padding: 0;
 }
@@ -22,7 +23,7 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
+    background: #006989; /* New Primary Color */
     color: white;
     padding: 30px;
     text-align: center;
@@ -67,11 +68,11 @@ body {
     padding: 25px;
     background: #f8f9fa;
     border-radius: 10px;
-    /* REMOVED: border-left: 4px solid #2196F3; */
+    border-left: 4px solid #006989; /* New Primary Color */
 }
 
 .section h2 {
-    color: #333;
+    color: #0F1020; /* New Heading Color */
     margin-bottom: 20px;
     font-size: 1.5em;
 }
@@ -84,7 +85,7 @@ label {
     display: block;
     margin-bottom: 5px;
     font-weight: 600;
-    color: #555;
+    color: #342E37; /* New Primary Text */
 }
 
 input, select {
@@ -94,11 +95,13 @@ input, select {
     border-radius: 8px;
     font-size: 16px;
     transition: border-color 0.3s;
+    background-color: #fff;
+    color: #342E37;
 }
 
 input:focus, select:focus {
     outline: none;
-    border-color: #2196F3;
+    border-color: #006989; /* New Primary Color */
 }
 
 .form-row {
@@ -108,7 +111,7 @@ input:focus, select:focus {
 }
 
 .button {
-    background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
+    background: #006989; /* New Primary Color */
     color: white;
     padding: 15px 30px;
     border: none;
@@ -124,10 +127,11 @@ input:focus, select:focus {
 
 .button:hover {
     transform: translateY(-2px);
+    filter: brightness(1.1);
 }
 
 .button.secondary {
-    background: #6c757d;
+    background: #342E37; /* New Dark Gray for secondary actions */
 }
 
 .results {
@@ -140,12 +144,12 @@ input:focus, select:focus {
     border-radius: 10px;
     padding: 25px;
     margin-bottom: 20px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    /* REMOVED: border-left: 4px solid #4CAF50; */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    border-left: 4px solid #B6C454; /* New Accent Color */
 }
 
 .nutrition-card h3 {
-    color: #333;
+    color: #0F1020; /* New Heading Color */
     margin-bottom: 20px;
     font-size: 1.4em;
 }
@@ -167,27 +171,27 @@ input:focus, select:focus {
 .macro-value {
     font-size: 1.8em;
     font-weight: bold;
-    color: #2196F3;
+    color: #006989; /* New Primary Color */
     margin-bottom: 5px;
 }
 
 .macro-label {
     font-size: 0.9em;
-    color: #666;
+    color: #342E37; /* New Primary Text */
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .fueling-notes {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
+    background: #f0f3d3; /* Light version of Accent */
+    border: 1px solid #B6C454; /* New Accent Color */
     border-radius: 8px;
     padding: 15px;
     margin-top: 15px;
 }
 
 .fueling-notes h4 {
-    color: #856404;
+    color: #5d662a; /* Dark version of Accent */
     margin-bottom: 10px;
 }
 
@@ -197,7 +201,7 @@ input:focus, select:focus {
 
 .fueling-notes li {
     margin-bottom: 5px;
-    color: #856404;
+    color: #5d662a; /* Dark version of Accent */
 }
 
 #workoutStatus {
@@ -205,11 +209,12 @@ input:focus, select:focus {
     padding: 10px;
     border-radius: 5px;
     display: none;
+    color: white;
 }
 
 .race-override {
-    background: #fff3cd;
-    border: 2px solid #ffc107;
+    background: #f0f3d3; /* Light version of Accent */
+    border: 2px solid #B6C454; /* New Accent Color */
     border-radius: 10px;
     padding: 20px;
     margin-top: 20px;
@@ -217,7 +222,7 @@ input:focus, select:focus {
 }
 
 .race-override h3 {
-    color: #856404;
+    color: #5d662a;
     margin-bottom: 15px;
     font-size: 1.3em;
 }
@@ -227,25 +232,9 @@ input:focus, select:focus {
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 15px;
-    /* REMOVED: border-left: 4px solid #ff6b35; */
 }
 
-.race-override .race-workout h4 {
-    color: #333;
-    margin-bottom: 10px;
-}
-
-.race-override input {
-    margin-bottom: 10px;
-}
-
-.race-override .button-group {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-/* Calendar specific styles with LARGER TEXT */
+/* Calendar specific styles */
 .calendar-container {
     max-width: 100%;
     margin: 0 auto;
@@ -267,7 +256,7 @@ input:focus, select:focus {
 }
 
 .nav-btn {
-    background: #2196F3;
+    background: #006989; /* New Primary Color */
     color: white;
     border: none;
     padding: 10px 15px;
@@ -277,13 +266,13 @@ input:focus, select:focus {
 }
 
 .nav-btn:hover {
-    background: #1976D2;
+    filter: brightness(1.1);
 }
 
 .month-year {
     font-size: 1.8em;
     font-weight: bold;
-    color: #333;
+    color: #0F1020; /* New Heading Color */
 }
 
 .calendar-grid {
@@ -293,12 +282,12 @@ input:focus, select:focus {
     background: #ddd;
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
     width: 100%;
 }
 
 .calendar-header-cell {
-    background: #2196F3;
+    background: #006989; /* New Primary Color */
     color: white;
     padding: 15px 5px;
     text-align: center;
@@ -327,77 +316,59 @@ input:focus, select:focus {
 }
 
 .calendar-day.today {
-    background: #e3f2fd;
-    border: 2px solid #2196F3;
+    background: #E6FAFC;
+    border: 2px solid #006989; /* New Primary Color */
 }
 
-.calendar-day.race-day {
+.calendar-day.race-day, .workout-item.race-a {
     background: #ffebee;
-    border: 2px solid #f44336;
+    border-left-color: #f44336; /* Keeping red for high-priority races */
 }
 
-.calendar-day.carb-loading {
-    background: #fff3e0;
-    border: 2px solid #ff9800;
+.calendar-day.carb-loading, .workout-item.race-b {
+    background: #f0f3d3; /* Light Accent */
+    border-left-color: #B6C454; /* New Accent Color */
 }
 
 .day-number {
     font-weight: bold;
     margin-bottom: 5px;
-    font-size: 1.1em; /* INCREASED from 0.9em */
+    font-size: 1.1em;
 }
 
 .day-content {
-    font-size: 0.85em; /* INCREASED from 0.75em */
-    line-height: 1.3; /* INCREASED from 1.2 */
+    font-size: 0.85em;
+    line-height: 1.3;
 }
 
 .workout-item {
-    background: #e3f2fd;
-    padding: 3px 5px; /* INCREASED padding */
-    margin: 2px 0; /* INCREASED margin */
+    background: #E6FAFC;
+    padding: 3px 5px;
+    margin: 2px 0;
     border-radius: 3px;
-    border-left: 3px solid #2196F3;
-    font-size: 0.8em; /* INCREASED from 0.7em */
+    border-left: 3px solid #006989; /* New Primary Color */
+    font-size: 0.8em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.workout-item.race-a {
-    background: #ffebee;
-    border-left-color: #f44336;
-    font-weight: bold;
-}
-
-.workout-item.race-b {
-    background: #fff3e0;
-    border-left-color: #ff9800;
-    font-weight: bold;
-}
-
-.workout-item.race-c {
-    background: #f3e5f5;
-    border-left-color: #9c27b0;
-    font-weight: bold;
-}
-
 .nutrition-info {
-    margin-top: 4px; /* INCREASED from 3px */
-    padding: 3px; /* INCREASED from 2px */
+    margin-top: 4px;
+    padding: 3px;
     background: #f8f9fa;
     border-radius: 2px;
-    font-size: 0.75em; /* INCREASED from 0.65em */
+    font-size: 0.75em;
 }
 
-.carb-loading-badge {
+.carb-loading-badge, .post-race-badge {
     position: absolute;
     top: 2px;
     right: 2px;
-    background: #ff9800;
+    background: #B6C454; /* New Accent */
     color: white;
-    font-size: 0.7em; /* INCREASED from 0.6em */
-    padding: 2px 4px; /* INCREASED padding */
+    font-size: 0.7em;
+    padding: 2px 4px;
     border-radius: 2px;
     font-weight: bold;
 }
@@ -406,10 +377,10 @@ input:focus, select:focus {
     position: absolute;
     top: 2px;
     right: 2px;
-    background: #f44336;
+    background: #f44336; /* Keeping red for races */
     color: white;
-    font-size: 0.7em; /* INCREASED from 0.6em */
-    padding: 2px 4px; /* INCREASED padding */
+    font-size: 0.7em;
+    padding: 2px 4px;
     border-radius: 2px;
     font-weight: bold;
 }
@@ -430,19 +401,6 @@ input:focus, select:focus {
     border-radius: 8px;
 }
 
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.85em;
-}
-
-.legend-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-}
-
 .day-detail-modal {
     display: none;
     position: fixed;
@@ -450,7 +408,7 @@ input:focus, select:focus {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(15, 16, 32, 0.7); /* Using near-black with transparency */
     z-index: 1000;
 }
 
@@ -468,75 +426,6 @@ input:focus, select:focus {
     overflow-y: auto;
 }
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #666;
-}
-
-/* Mobile List View */
-.mobile-list {
-    display: none;
-}
-
-.day-list-item {
-    background: white;
-    margin-bottom: 10px;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.day-list-item.race-day {
-    /* REMOVED: border-left: 4px solid #f44336; */
-    background: #ffebee;
-    border: 2px solid #f44336;
-}
-
-.day-list-item.carb-loading {
-    /* REMOVED: border-left: 4px solid #ff9800; */
-    background: #fff3e0;
-    border: 2px solid #ff9800;
-}
-
-.day-list-item.today {
-    /* REMOVED: border-left: 4px solid #2196F3; */
-    background: #e3f2fd;
-    border: 2px solid #2196F3;
-}
-
-.day-list-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.day-list-date {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.day-list-workouts {
-    margin-bottom: 10px;
-}
-
-.day-list-nutrition {
-    font-size: 0.9em;
-    color: #666;
-}
-
 /* Mobile responsive */
 @media (max-width: 1024px) {
     .calendar-grid {
@@ -547,51 +436,7 @@ input:focus, select:focus {
         display: block;
     }
     
-    .calendar-header {
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .legend {
-        justify-content: center;
-    }
-    
     .daily-layout {
         grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    
-    .daily-layout .right-column {
-        position: static;
-    }
-    
-    .main-content {
-        padding: 20px;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .macro-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .header h1 {
-        font-size: 2em;
-    }
-}
-
-@media (min-width: 1025px) {
-    .calendar-day {
-        min-height: 160px;
-    }
-    
-    .day-content {
-        font-size: 0.9em; /* INCREASED from 0.8em */
-    }
-    
-    .workout-item {
-        font-size: 0.85em; /* INCREASED from 0.75em */
     }
 }
