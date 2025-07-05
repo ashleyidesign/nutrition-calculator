@@ -138,9 +138,14 @@ const intervalsAPI = {
             const workoutDate = new Date(dateStr);
             if (workoutDate < today && completionCallsCount < maxCompletionCalls) {
                 for (const workout of dayWorkouts) {
-                    if (workout.id && completionCallsCount < maxCompletionCalls) {
+                    // Check if this workout has been completed (has paired_activity_id)
+                    if (workout.paired_activity_id && completionCallsCount < maxCompletionCalls) {
                         try {
-                            const completionData = await this.loadActivityDetails(apiKey, athleteId, workout.id);
+                            // Extract the activity ID from paired_activity_id (format: "i12345678")
+                            const activityId = workout.paired_activity_id.replace('i', '');
+                            console.log(`🔗 Found paired activity ${activityId} for workout ${workout.name}`);
+                            
+                            const completionData = await this.loadActivityDetails(apiKey, athleteId, activityId);
                             if (completionData) {
                                 workout.completionData = completionData;
                                 workout.isCompleted = true;
@@ -150,6 +155,8 @@ const intervalsAPI = {
                         } catch (error) {
                             console.warn(`Could not load completion data for workout ${workout.id}:`, error);
                         }
+                    } else if (workout.paired_activity_id) {
+                        console.log(`📝 Workout ${workout.name} has no paired activity (not completed yet)`);
                     }
                 }
             }
