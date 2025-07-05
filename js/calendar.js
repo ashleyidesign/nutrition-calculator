@@ -566,13 +566,26 @@ const calendarManager = {
             }
         });
         
+        // Debug logging
+        console.log(`🎯 Calculating nutrition for ${date}:`, {
+            raceInfo: !!raceInfo,
+            isCarboLoading,
+            isPostRace,
+            highestIntensity,
+            totalDuration,
+            dayEvents: dayEvents.map(e => ({ name: e.name, category: e.category }))
+        });
+        
         return nutritionCalculator.calculateWithCompletionData(
             this.bodyWeight, 
             this.goals, 
             highestIntensity, 
             totalDuration,
             date,
-            dayEvents
+            dayEvents,
+            !!raceInfo,  // isRaceDay
+            isPostRace,  // isPostRace 
+            isCarboLoading  // isCarboLoading
         );
     },
     
