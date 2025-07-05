@@ -1,3 +1,283 @@
+// Workout Completion Tracker Module (inline for compatibility)
+const workoutCompletionTracker = {
+    // Analyze completed workout against planned workout
+    analyzeWorkoutCompletion(plannedWorkout, completionData) {
+        if (!completionData) return null;
+        
+        console.log('🎯 Analyzing workout completion:', plannedWorkout.name);
+        
+        const planned = this.extractPlannedMetrics(plannedWorkout);
+        const actual = this.extractActualMetrics(completionData);
+        
+        const variance = this.calculateVariance(planned, actual);
+        const adjustment = this.generateAdjustmentRecommendation(variance, planned, actual);
+        
+        const analysis = {
+            workoutId: plannedWorkout.id,
+            workoutName: plannedWorkout.name,
+            date: plannedWorkout.start_date_local.split('T')[0],
+            planned,
+            actual,
+            variance,
+            adjustment,
+            severity: this.calculateAdjustmentSeverity(variance),
+            timestamp: new Date()
+        };
+        
+        completionDataStore.store(plannedWorkout.id, analysis.date, analysis);
+        return analysis;
+    },
+    
+    extractPlannedMetrics(plannedWorkout) {
+        const plannedDuration = Math.round((plannedWorkout.moving_time || plannedWorkout.duration || 3600) / 60);
+        const plannedIntensity = this.mapWorkoutTypeToIntensity(plannedWorkout);
+        
+        return {
+            duration: plannedDuration,
+            intensity: plannedIntensity,
+            intensityScore: this.getIntensityScore(plannedIntensity),
+            estimatedStress: this.calculateStressScore(plannedDuration, plannedIntensity),
+            type: plannedWorkout.type || 'workout'
+        };
+    },
+    
+    extractActualMetrics(completionData) {
+        const actualIntensity = this.calculateActualIntensity(completionData);
+        
+        return {
+            duration: completionData.actualDuration,
+            intensity: actualIntensity,
+            intensityScore: this.getIntensityScore(actualIntensity),
+            actualStress: this.calculateStressScore(completionData.actualDuration, actualIntensity),
+            avgHeartRate: completionData.avgHeartRate,
+            maxHeartRate: completionData.maxHeartRate,
+            avgPower: completionData.avgPower,
+            perceivedEffort: completionData.perceivedEffort,
+            calories: completionData.calories,
+            tss: completionData.trainingStressScore
+        };
+    },
+    
+    mapWorkoutTypeToIntensity(workout) {
+        const name = (workout.name || '').toLowerCase();
+        const type = (workout.type || '').toLowerCase();
+        
+        if (name.includes('recovery') || name.includes('easy')) return 'easy';
+        if (name.includes('tempo') || name.includes('zone 3')) return 'tempo';
+        if (name.includes('threshold') || name.includes('zone 4')) return 'threshold';
+        if (name.includes('interval') || name.includes('zone 5')) return 'intervals';
+        if (name.includes('strength endurance') || name.includes('low cadence')) return 'intervals';
+        if (name.includes('strength') || type.includes('strength')) return 'strength';
+        
+        return 'endurance';
+    },
+    
+    calculateActualIntensity(completionData) {
+        // Use RPE if available (most reliable)
+        if (completionData.perceivedEffort) {
+            if (completionData.perceivedEffort <= 3) return 'easy';
+            if (completionData.perceivedEffort <= 5) return 'endurance';
+            if (completionData.perceivedEffort <= 6) return 'tempo';
+            if (completionData.perceivedEffort <= 8) return 'threshold';
+            return 'intervals';
+        }
+        
+        // Use heart rate zones if available
+        if (completionData.avgHeartRate && completionData.maxHeartRate) {
+            const hrPercent = completionData.avgHeartRate / completionData.maxHeartRate;
+            if (hrPercent < 0.65) return 'easy';
+            if (hrPercent < 0.75) return 'endurance';
+            if (hrPercent < 0.85) return 'tempo';
+            if (hrPercent < 0.92) return 'threshold';
+            return 'intervals';
+        }
+        
+        // Use TSS if available
+        if (completionData.trainingStressScore) {
+            const tssPerHour = completionData.trainingStressScore / (completionData.actualDuration / 60);
+            if (tssPerHour < 60) return 'easy';
+            if (tssPerHour < 80) return 'endurance';
+            if (tssPerHour < 100) return 'tempo';
+            if (tssPerHour < 120) return 'threshold';
+            return 'intervals';
+        }
+        
+        // Fallback to duration-based estimation
+        if (completionData.actualDuration > 150) return 'endurance';
+        if (completionData.actualDuration < 45) return 'intervals';
+        return 'tempo';
+    },
+    
+    getIntensityScore(intensity) {
+        const scores = { 'easy': 1, 'endurance': 2, 'tempo': 3, 'threshold': 4, 'intervals': 5, 'strength': 2 };
+        return scores[intensity] || 2;
+    },
+    
+    calculateStressScore(duration, intensity) {
+        const intensityMultipliers = { 
+            'easy': 0.6, 
+            'endurance': 1.0, 
+            'tempo': 1.4, 
+            'threshold': 1.8, 
+            'intervals': 2.2,
+            'strength': 1.2
+        };
+        return (duration / 60) * (intensityMultipliers[intensity] || 1.0);
+    },
+    
+    calculateVariance(planned, actual) {
+        return {
+            durationVariance: (actual.duration - planned.duration) / planned.duration,
+            intensityVariance: (actual.intensityScore - planned.intensityScore) / planned.intensityScore,
+            stressVariance: (actual.actualStress - planned.estimatedStress) / planned.estimatedStress,
+            absoluteDurationDiff: actual.duration - planned.duration,
+            absoluteIntensityDiff: actual.intensityScore - planned.intensityScore
+        };
+    },
+    
+    calculateAdjustmentSeverity(variance) {
+        const totalVariance = Math.abs(variance.durationVariance) + Math.abs(variance.intensityVariance);
+        
+        if (totalVariance > 0.8) return 'high';
+        if (totalVariance > 0.4) return 'medium';
+        if (totalVariance > 0.15) return 'low';
+        return 'none';
+    },
+    
+    generateAdjustmentRecommendation(variance, planned, actual) {
+        if (this.calculateAdjustmentSeverity(variance) === 'none') {
+            return null;
+        }
+        
+        let calorieAdjustment = 0;
+        let carbAdjustment = 0;
+        let proteinAdjustment = 0;
+        const reasoning = [];
+        
+        // Duration-based adjustments
+        if (Math.abs(variance.durationVariance) > 0.15) {
+            const durationMinutes = variance.absoluteDurationDiff;
+            const durationCalories = durationMinutes * 10;
+            calorieAdjustment += durationCalories;
+            carbAdjustment += durationCalories * 0.6 / 4;
+            
+            reasoning.push(
+                durationMinutes > 0 
+                    ? `Workout was ${Math.round(Math.abs(variance.durationVariance) * 100)}% longer than planned (+${durationMinutes} min)`
+                    : `Workout was ${Math.round(Math.abs(variance.durationVariance) * 100)}% shorter than planned (${durationMinutes} min)`
+            );
+        }
+        
+        // Intensity-based adjustments
+        if (Math.abs(variance.intensityVariance) > 0.2) {
+            const intensityCalories = variance.absoluteIntensityDiff * 120;
+            calorieAdjustment += intensityCalories;
+            carbAdjustment += intensityCalories * 0.7 / 4;
+            
+            reasoning.push(
+                variance.intensityVariance > 0
+                    ? `Workout was more intense than planned (${actual.intensity} vs ${planned.intensity})`
+                    : `Workout was less intense than planned (${actual.intensity} vs ${planned.intensity})`
+            );
+        }
+        
+        // High stress/RPE adjustments
+        if (actual.perceivedEffort && actual.perceivedEffort >= 8) {
+            calorieAdjustment += 150;
+            proteinAdjustment += 10;
+            reasoning.push(`High perceived effort (RPE ${actual.perceivedEffort}) - increasing recovery nutrition`);
+        }
+        
+        // TSS-based fine-tuning
+        if (actual.tss && actual.tss > 100) {
+            calorieAdjustment += Math.min(100, (actual.tss - 100) * 2);
+            reasoning.push(`High training stress (TSS: ${actual.tss}) detected`);
+        }
+        
+        if (!proteinAdjustment) {
+            proteinAdjustment = Math.round(calorieAdjustment * 0.15 / 4);
+        }
+        const fatAdjustment = Math.round(calorieAdjustment * 0.25 / 9);
+        
+        return {
+            calories: Math.round(calorieAdjustment),
+            carbs: Math.round(carbAdjustment),
+            protein: proteinAdjustment,
+            fat: fatAdjustment,
+            reasoning: reasoning,
+            timing: this.getTimingRecommendations(variance, actual),
+            recovery: this.getRecoveryRecommendations(actual)
+        };
+    },
+    
+    getTimingRecommendations(variance, actual) {
+        const recommendations = [];
+        
+        if (variance.intensityVariance > 0.3 || (actual.perceivedEffort && actual.perceivedEffort >= 7)) {
+            recommendations.push('Prioritize post-workout nutrition within 30 minutes');
+            recommendations.push('Increase carb intake in the 2 hours post-workout');
+        }
+        
+        if (variance.durationVariance > 0.3) {
+            recommendations.push('Extend post-workout fueling window');
+            recommendations.push('Consider larger evening meal to support recovery');
+        }
+        
+        if (actual.actualDuration > 120) {
+            recommendations.push('Focus on glycogen replenishment over next 24 hours');
+        }
+        
+        return recommendations;
+    },
+    
+    getRecoveryRecommendations(actual) {
+        const recommendations = [];
+        
+        if (actual.perceivedEffort && actual.perceivedEffort >= 8) {
+            recommendations.push('Prioritize hydration and electrolyte replacement');
+            recommendations.push('Consider anti-inflammatory foods (tart cherry, turmeric)');
+            recommendations.push('Ensure adequate sleep (8+ hours)');
+        }
+        
+        if (actual.tss && actual.tss > 150) {
+            recommendations.push('High stress session - extra recovery focus needed');
+            recommendations.push('Consider lighter training tomorrow');
+        }
+        
+        if (actual.actualDuration > 180) {
+            recommendations.push('Long session - monitor hydration status');
+            recommendations.push('Split tomorrow\'s nutrition into smaller, frequent meals');
+        }
+        
+        return recommendations;
+    },
+    
+    applyAdjustmentToNutrition(baseNutrition, adjustment) {
+        if (!adjustment) return baseNutrition;
+        
+        return {
+            ...baseNutrition,
+            calories: baseNutrition.calories + adjustment.calories,
+            protein: baseNutrition.protein + adjustment.protein,
+            carbs: baseNutrition.carbs + adjustment.carbs,
+            fat: baseNutrition.fat + adjustment.fat,
+            adjustmentApplied: true,
+            adjustmentDetails: {
+                reason: adjustment.reasoning.join('; '),
+                timing: adjustment.timing,
+                recovery: adjustment.recovery,
+                originalPlan: {
+                    calories: baseNutrition.calories,
+                    protein: baseNutrition.protein,
+                    carbs: baseNutrition.carbs,
+                    fat: baseNutrition.fat
+                }
+            }
+        };
+    }
+};
+
+// Enhanced Calendar Manager
 const calendarManager = {
     currentDate: new Date(),
     events: [],
@@ -51,7 +331,7 @@ const calendarManager = {
         }
         
         const loadingState = document.getElementById('loadingState');
-        loadingState.innerHTML = '<h3>Loading your nutrition calendar with completion data...</h3>';
+        loadingState.innerHTML = '<h3>Loading your enhanced nutrition calendar...</h3><p>Fetching workouts and completion data from Intervals.icu...</p>';
         loadingState.style.display = 'block';
         
         try {
@@ -60,12 +340,12 @@ const calendarManager = {
             
             const { athleteId } = intervalsAPI.getDefaults();
             
-            // Load workouts with completion data
             this.events = await intervalsAPI.loadWorkoutsForDateRangeWithCompletion(
                 apiKey, athleteId, this.formatDate(startDate), this.formatDate(endDate)
             );
             
-            console.log(`Loaded ${this.events.length} events for calendar (with completion data)`);
+            const completedCount = this.events.filter(e => e.isCompleted).length;
+            console.log(`📊 Loaded ${this.events.length} events for calendar (${completedCount} with completion data)`);
             
             loadingState.style.display = 'none';
             document.getElementById('legend').style.display = 'flex';
@@ -142,7 +422,6 @@ const calendarManager = {
             else if (isCarboLoading) listItem.classList.add('carb-loading');
             else if (isPostRace) listItem.classList.add('post-race'); 
 
-            // Check for completed workouts
             const hasCompletedWorkouts = dayEvents.some(e => e.isCompleted);
             if (hasCompletedWorkouts) listItem.classList.add('completed-workout');
 
@@ -187,7 +466,6 @@ const calendarManager = {
         const dayEvents = this.getEventsForDate(fullDate);
         const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate);
         
-        // Check for completed workouts
         const hasCompletedWorkouts = dayEvents.some(e => e.isCompleted);
         const hasAdjustments = dayEvents.some(e => e.isCompleted && e.completionData);
         
@@ -288,7 +566,6 @@ const calendarManager = {
             }
         });
         
-        // Use enhanced calculation that considers completion data
         return nutritionCalculator.calculateWithCompletionData(
             this.bodyWeight, 
             this.goals, 
@@ -363,17 +640,17 @@ const calendarManager = {
     
     previousMonth() {
         this.currentDate.setMonth(this.currentDate.getMonth() - 1);
-        this.loadCalendarData(); // Reload to get completion data for new date range
+        this.loadCalendarData();
     },
     
     nextMonth() {
         this.currentDate.setMonth(this.currentDate.getMonth() + 1);
-        this.loadCalendarData(); // Reload to get completion data for new date range
+        this.loadCalendarData();
     },
     
     goToToday() {
         this.currentDate = new Date();
-        this.loadCalendarData(); // Reload to get completion data for current month
+        this.loadCalendarData();
     },
     
     updateMonthYear() {
