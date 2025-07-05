@@ -350,8 +350,10 @@ const calendarManager = {
             loadingState.style.display = 'none';
             document.getElementById('legend').style.display = 'flex';
             document.getElementById('calendarHeader').style.display = 'flex';
+            document.getElementById('weeklySummary').style.display = 'block';
             
             this.renderCalendar();
+            this.renderWeeklySummary();
         } catch (error) {
             console.error('Calendar loading error:', error);
             loadingState.innerHTML = `<h3>Error loading calendar. Check your API key.</h3><p>${error.message}</p>`;
@@ -632,15 +634,182 @@ const calendarManager = {
             `;
         }
         
+        // Generate sample nutrition data for past dates
+        const selectedDate = new Date(date);
+        const today = new Date();
+        let nutritionData = null;
+        
+        if (selectedDate < today) {
+            // Generate sample data for completed days
+            nutritionData = nutritionCalculator.generateSampleNutritionData(nutrition, date);
+        }
+        
         modalContent.innerHTML = `
             <div class="section">
                 <h3>${headerText}</h3>
                 ${workoutDetailsHtml}
-                ${nutritionCalculator.formatNutritionResults(nutrition)}
+                ${nutritionCalculator.formatNutritionResults(nutrition, nutritionData)}
             </div>
         `;
         
         modal.style.display = 'block';
+        
+        // Animate progress circles after modal is shown
+        if (nutritionData) {
+            setTimeout(() => {
+                this.animateProgressCircles();
+            }, 100);
+        }
+    },
+
+    // Animate progress circles
+    animateProgressCircles() {
+        const progressRings = document.querySelectorAll('.progress-ring');
+        progressRings.forEach((ring, index) => {
+            const currentOffset = ring.style.strokeDashoffset || 314;
+            ring.style.strokeDashoffset = 314; // Start from 0
+            setTimeout(() => {
+                ring.style.strokeDashoffset = currentOffset;
+            }, index * 100);
+        });
+    },
+
+    // Render weekly summary
+    renderWeeklySummary() {
+        const summaryContent = document.getElementById('weeklySummaryContent');
+        const weeks = this.generateWeeklySummaryData();
+        
+        summaryContent.innerHTML = weeks.map(week => `
+            <div class="week-summary ${week.isCurrent ? 'current-week' : ''}">
+                <div class="week-header ${week.isCurrent ? 'current' : ''}">
+                    📅 ${week.title}
+                </div>
+                <div class="week-stats">
+                    <div class="stat-row">
+                        <div class="stat-label">⏱️ Training Time</div>
+                        <div class="stat-values">
+                            <div class="stat-planned">Planned: ${week.stats.plannedTime}</div>
+                            <div class="stat-actual">Actual: ${week.stats.actualTime}</div>
+                            <div class="stat-variance ${week.stats.timeVariance >= 0 ? 'positive' : 'negative'}">
+                                ${week.stats.timeVariance >= 0 ? '+' : ''}${week.stats.timeVarianceText}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-row">
+                        <div class="stat-label">🔥 Total Calories</div>
+                        <div class="stat-values">
+                            <div class="stat-planned">Planned: ${week.stats.plannedCalories.toLocaleString()}</div>
+                            <div class="stat-actual">Actual: ${week.stats.actualCalories.toLocaleString()}</div>
+                            <div class="stat-variance ${week.stats.calorieVariance >= 0 ? 'positive' : 'negative'}">
+                                ${week.stats.calorieVariance >= 0 ? '+' : ''}${week.stats.calorieVarianceText}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-row">
+                        <div class="stat-label">🍞 Carbs</div>
+                        <div class="stat-values">
+                            <div class="stat-planned">Planned: ${week.stats.plannedCarbs}g</div>
+                            <div class="stat-actual">Actual: ${week.stats.actualCarbs}g</div>
+                            <div class="stat-variance ${week.stats.carbVariance >= 0 ? 'positive' : 'negative'}">
+                                ${week.stats.carbVariance >= 0 ? '+' : ''}${week.stats.carbVarianceText}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-row">
+                        <div class="stat-label">🥩 Protein</div>
+                        <div class="stat-values">
+                            <div class="stat-planned">Planned: ${week.stats.plannedProtein}g</div>
+                            <div class="stat-actual">Actual: ${week.stats.actualProtein}g</div>
+                            <div class="stat-variance ${week.stats.proteinVariance >= 0 ? 'positive' : 'negative'}">
+                                ${week.stats.proteinVariance >= 0 ? '+' : ''}${week.stats.proteinVarianceText}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="adherence-bar">
+                        <div class="adherence-fill ${week.adherenceClass}" data-width="${week.adherence}%"></div>
+                    </div>
+                    <div class="adherence-text" style="color: ${week.adherenceColor};">${week.adherence}% Nutrition Adherence</div>
+                </div>
+            </div>
+        `).join('');
+        
+        // Animate adherence bars
+        setTimeout(() => {
+            const adherenceBars = document.querySelectorAll('.adherence-fill');
+            adherenceBars.forEach(bar => {
+                const targetWidth = bar.getAttribute('data-width');
+                bar.style.width = targetWidth;
+            });
+        }, 200);
+    },
+
+    // Generate weekly summary data
+    generateWeeklySummaryData() {
+        const today = new Date();
+        const weeks = [];
+        
+        // Generate 3 weeks of sample data
+        for (let i = 0; i < 3; i++) {
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - (today.getDay()) - (i * 7));
+            
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            const isCurrent = i === 0;
+            const isLastWeek = i === 1;
+            
+            // Sample data generation
+            const baseCalories = 20000 + (Math.random() * 5000);
+            const actualMultiplier = 0.85 + (Math.random() * 0.25); // 85% to 110%
+            
+            const plannedCalories = Math.round(baseCalories);
+            const actualCalories = Math.round(baseCalories * actualMultiplier);
+            const calorieVariance = actualCalories - plannedCalories;
+            
+            const adherence = Math.round(actualMultiplier * 100);
+            
+            weeks.push({
+                title: isCurrent ? 
+                    `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${weekEnd.toLocaleDateString('en-US', { day: 'numeric' })}, ${weekEnd.getFullYear()} (Current)` :
+                    `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${weekEnd.toLocaleDateString('en-US', { day: 'numeric' })}, ${weekEnd.getFullYear()}`,
+                isCurrent,
+                adherence,
+                adherenceClass: adherence >= 90 ? 'adherence-excellent' : 
+                              adherence >= 80 ? 'adherence-good' : 
+                              adherence >= 70 ? 'adherence-fair' : 'adherence-poor',
+                adherenceColor: adherence >= 90 ? '#4caf50' : 
+                               adherence >= 80 ? '#8bc34a' : 
+                               adherence >= 70 ? '#ff9800' : '#f44336',
+                stats: {
+                    plannedTime: `${7 + i}h ${15 + (i * 10)}m`,
+                    actualTime: `${7 + i + (isCurrent ? 1 : 0)}h ${25 + (i * 15)}m`,
+                    timeVariance: isCurrent ? 27 : (isLastWeek ? 15 : -95),
+                    timeVarianceText: isCurrent ? '27 min (+5%)' : (isLastWeek ? '15 min (+3%)' : '1h 35m (-23%)'),
+                    
+                    plannedCalories,
+                    actualCalories,
+                    calorieVariance,
+                    calorieVarianceText: `${calorieVariance.toLocaleString()} (${calorieVariance >= 0 ? '+' : ''}${Math.round((calorieVariance / plannedCalories) * 100)}%)`,
+                    
+                    plannedCarbs: Math.round(plannedCalories * 0.6 / 4),
+                    actualCarbs: Math.round(actualCalories * 0.58 / 4),
+                    carbVariance: Math.round((actualCalories * 0.58 / 4) - (plannedCalories * 0.6 / 4)),
+                    carbVarianceText: `${Math.round((actualCalories * 0.58 / 4) - (plannedCalories * 0.6 / 4))}g (${Math.round(((actualCalories * 0.58 / 4) - (plannedCalories * 0.6 / 4)) / (plannedCalories * 0.6 / 4) * 100)}%)`,
+                    
+                    plannedProtein: Math.round(plannedCalories * 0.15 / 4),
+                    actualProtein: Math.round(actualCalories * 0.17 / 4),
+                    proteinVariance: Math.round((actualCalories * 0.17 / 4) - (plannedCalories * 0.15 / 4)),
+                    proteinVarianceText: `${Math.round((actualCalories * 0.17 / 4) - (plannedCalories * 0.15 / 4))}g (+${Math.round(((actualCalories * 0.17 / 4) - (plannedCalories * 0.15 / 4)) / (plannedCalories * 0.15 / 4) * 100)}%)`
+                }
+            });
+        }
+        
+        return weeks;
     },
 
     closeModal() {
