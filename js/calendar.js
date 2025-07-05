@@ -288,14 +288,28 @@ const calendarManager = {
             }
         });
         
-        // Use enhanced calculation that considers completion data
+        // Determine if this is a race day
+        const isRaceDay = raceInfo !== null;
+        
+        console.log(`🗓️ Calendar nutrition calculation for ${date}:`, {
+            isRaceDay,
+            isCarboLoading, 
+            isPostRace,
+            highestIntensity,
+            totalDuration
+        });
+        
+        // Use enhanced calculation that considers completion data AND race day flags
         return nutritionCalculator.calculateWithCompletionData(
             this.bodyWeight, 
             this.goals, 
             highestIntensity, 
             totalDuration,
-            date,
-            dayEvents
+            this.formatDate(date),
+            dayEvents,
+            isRaceDay,      // ← This was missing!
+            isPostRace,     // ← This was missing!
+            isCarboLoading  // ← This was missing!
         );
     },
     
