@@ -252,6 +252,16 @@ input:focus, select:focus {
     padding: 20px;
 }
 
+.calendar-with-summary {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+}
+
+.calendar-main {
+    min-width: 0; /* Prevents grid overflow */
+}
+
 .calendar-header {
     display: flex;
     justify-content: space-between;
