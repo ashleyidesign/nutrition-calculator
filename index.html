@@ -13,65 +13,73 @@
             <p>Plan your nutrition strategy with smart completion tracking</p>
         </div>
 
-        <div class="calendar-container">
-            <div class="section">
-                <h2>⚙️ Settings</h2>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="apiKey">API Key</label>
-                        <input type="password" id="apiKey" placeholder="Enter your API key" value="5b7vz3ozlxd42dqx0udbrq7e2">
+        <div class="calendar-with-summary">
+            <div class="calendar-main">
+                <div class="section">
+                    <h2>⚙️ Settings</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="apiKey">API Key</label>
+                            <input type="password" id="apiKey" placeholder="Enter your API key" value="5b7vz3ozlxd42dqx0udbrq7e2">
+                        </div>
+                        <div class="form-group">
+                            <label for="bodyWeight">Body Weight (lbs)</label>
+                            <input type="number" id="bodyWeight" min="100" max="250" value="192">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="bodyWeight">Body Weight (lbs)</label>
-                        <input type="number" id="bodyWeight" min="100" max="250" value="192">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="goals">Current Goals</label>
+                            <select id="goals">
+                                <option value="weight-loss">Weight Loss</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="performance">Performance Focus</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="goals">Current Goals</label>
-                        <select id="goals">
-                            <option value="weight-loss">Weight Loss</option>
-                            <option value="maintenance">Maintenance</option>
-                            <option value="performance">Performance Focus</option>
-                        </select>
+
+                <div class="legend" id="legend" style="display: none;">
+                    <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #f44336;"></div><span>Race Day</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #B6C454;"></div><span>Carb Loading</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #006989; opacity: 0.5"></div><span>Post-Race Recovery</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>Completed Workout</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>📊 Nutrition Adjusted</span></div>
+                </div>
+
+                <div class="calendar-header" id="calendarHeader" style="display: none;">
+                    <div class="calendar-nav">
+                        <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
+                        <div class="month-year" id="monthYear"></div>
+                        <button class="nav-btn" onclick="calendarManager.nextMonth()">Next ›</button>
                     </div>
+                    <button class="button" onclick="calendarManager.goToToday()">Today</button>
+                </div>
+
+                <div class="loading" id="loadingState">
+                    <h3>Loading your enhanced nutrition calendar...</h3>
+                    <p>Fetching workouts and completion data from Intervals.icu...</p>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid">
+                    <div class="calendar-header-cell">Sun</div>
+                    <div class="calendar-header-cell">Mon</div>
+                    <div class="calendar-header-cell">Tue</div>
+                    <div class="calendar-header-cell">Wed</div>
+                    <div class="calendar-header-cell">Thu</div>
+                    <div class="calendar-header-cell">Fri</div>
+                    <div class="calendar-header-cell">Sat</div>
+                </div>
+                <div class="mobile-list" id="mobileList"></div>
+            </div>
+
+            <div class="summary-section" id="weeklySummary" style="display: none;">
+                <h3>📊 Weekly Summary</h3>
+                <div id="weeklySummaryContent">
+                    <!-- Weekly summary will be inserted here -->
                 </div>
             </div>
-
-            <div class="legend" id="legend" style="display: none;">
-                <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #f44336;"></div><span>Race Day</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #B6C454;"></div><span>Carb Loading</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #006989; opacity: 0.5"></div><span>Post-Race Recovery</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>Completed Workout</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>📊 Nutrition Adjusted</span></div>
-            </div>
-
-            <div class="calendar-header" id="calendarHeader" style="display: none;">
-                <div class="calendar-nav">
-                    <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
-                    <div class="month-year" id="monthYear"></div>
-                    <button class="nav-btn" onclick="calendarManager.nextMonth()">Next ›</button>
-                </div>
-                <button class="button" onclick="calendarManager.goToToday()">Today</button>
-            </div>
-
-            <div class="loading" id="loadingState">
-                <h3>Loading your enhanced nutrition calendar...</h3>
-                <p>Fetching workouts and completion data from Intervals.icu...</p>
-            </div>
-
-            <div class="calendar-grid" id="calendarGrid">
-                <div class="calendar-header-cell">Sun</div>
-                <div class="calendar-header-cell">Mon</div>
-                <div class="calendar-header-cell">Tue</div>
-                <div class="calendar-header-cell">Wed</div>
-                <div class="calendar-header-cell">Thu</div>
-                <div class="calendar-header-cell">Fri</div>
-                <div class="calendar-header-cell">Sat</div>
-            </div>
-            <div class="mobile-list" id="mobileList"></div>
-
         </div>
     </div>
 
