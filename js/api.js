@@ -76,6 +76,8 @@ const intervalsAPI = {
             }
             
             const data = await response.json();
+            console.log('🔍 Raw API response for activity', activityId, ':', data);
+            
             return data.activity ? this.processActivityData(data.activity) : null;
             
         } catch (error) {
@@ -86,23 +88,31 @@ const intervalsAPI = {
 
     // Process raw activity data into usable completion data
     processActivityData(rawData) {
-        return {
-            id: rawData.id,
-            actualDuration: Math.round((rawData.moving_time || rawData.elapsed_time) / 60),
-            avgHeartRate: rawData.average_heartrate,
-            maxHeartRate: rawData.max_heartrate,
-            avgPower: rawData.average_watts,
-            maxPower: rawData.max_watts,
-            avgCadence: rawData.average_cadence,
-            elevationGain: rawData.total_elevation_gain,
-            distance: rawData.distance,
-            avgSpeed: rawData.average_speed,
-            calories: rawData.kilojoules ? Math.round(rawData.kilojoules / 4.184) : null,
-            trainingStressScore: rawData.training_stress_score,
-            perceivedEffort: rawData.perceived_exertion || null,
-            description: rawData.description,
-            workoutCode: rawData.workout_code
+        console.log('🔍 Processing activity data:', rawData);
+        
+        // Handle the case where rawData might be nested under 'activity'
+        const activityData = rawData.activity || rawData;
+        
+        const processedData = {
+            id: activityData.id,
+            actualDuration: Math.round((activityData.moving_time || activityData.elapsed_time || 0) / 60),
+            avgHeartRate: activityData.average_heartrate,
+            maxHeartRate: activityData.max_heartrate,
+            avgPower: activityData.average_watts,
+            maxPower: activityData.max_watts,
+            avgCadence: activityData.average_cadence,
+            elevationGain: activityData.total_elevation_gain,
+            distance: activityData.distance,
+            avgSpeed: activityData.average_speed,
+            calories: activityData.kilojoules ? Math.round(activityData.kilojoules / 4.184) : null,
+            trainingStressScore: activityData.training_stress_score,
+            perceivedEffort: activityData.perceived_exertion || null,
+            description: activityData.description,
+            workoutCode: activityData.workout_code
         };
+        
+        console.log('✅ Processed activity data:', processedData);
+        return processedData;
     },
 
     // Enhanced range loading with completion data for past workouts
