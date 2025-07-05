@@ -37,7 +37,8 @@
                         </select>
                     </div>
                 </div>
-                </div>
+                <button class="button" id="loadCalendarBtn">Load Calendar</button>
+            </div>
 
             <div class="legend" id="legend" style="display: none;">
                 <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
@@ -60,13 +61,13 @@
             </div>
 
             <div class="calendar-grid" id="calendarGrid">
-                <div class="calendar-header-cell">Sun</div>
                 <div class="calendar-header-cell">Mon</div>
                 <div class="calendar-header-cell">Tue</div>
                 <div class="calendar-header-cell">Wed</div>
                 <div class="calendar-header-cell">Thu</div>
                 <div class="calendar-header-cell">Fri</div>
                 <div class="calendar-header-cell">Sat</div>
+                <div class="calendar-header-cell">Sun</div>
             </div>
             <div class="mobile-list" id="mobileList"></div>
 
@@ -91,6 +92,13 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🗓️ Nutrition Calendar Initialized');
+            
+            // Add event listener for the Load Calendar button
+            document.getElementById('loadCalendarBtn')?.addEventListener('click', () => {
+                calendarManager.loadCalendarData();
+            });
+            
+            // Initialize calendar manager
             calendarManager.init();
         });
     </script>
