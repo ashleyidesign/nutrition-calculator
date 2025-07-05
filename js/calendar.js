@@ -100,17 +100,20 @@ const calendarManager = {
         const daysInMonth = lastDay.getDate();
         
         // Calculate starting day of week with Monday as 0
-        let startingDayOfWeek = firstDay.getDay() - 1; // Convert Sunday=0 to Monday=0
-        if (startingDayOfWeek < 0) startingDayOfWeek = 6; // Handle Sunday case
+        // JavaScript getDay(): Sunday=0, Monday=1, Tuesday=2, etc.
+        // We want: Monday=0, Tuesday=1, Wednesday=2, etc.
+        let startingDayOfWeek = (firstDay.getDay() + 6) % 7; // Convert to Monday=0 system
         
         const allDays = [];
         
-        // Add previous month days to fill the first week
-        const prevMonth = new Date(year, month, 0);
-        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-            const day = prevMonth.getDate() - i;
-            const fullDate = new Date(year, month - 1, day);
-            grid.appendChild(this.createDayElement(day, true, fullDate));
+        // Add previous month days to fill the first week (if needed)
+        if (startingDayOfWeek > 0) {
+            const prevMonth = new Date(year, month, 0);
+            for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+                const day = prevMonth.getDate() - i;
+                const fullDate = new Date(year, month - 1, day);
+                grid.appendChild(this.createDayElement(day, true, fullDate));
+            }
         }
         
         // Add current month days
