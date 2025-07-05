@@ -27,15 +27,22 @@ const nutritionCalculator = {
     },
 
     // Enhanced calculation that considers completion data for a specific date
-    calculateWithCompletionData(bodyWeightLbs, goals, workoutType, duration, date, workouts = null) {
-        // Start with base calculation
-        let nutrition = this.calculate(bodyWeightLbs, goals, workoutType, duration);
+    calculateWithCompletionData(bodyWeightLbs, goals, workoutType, duration, date, workouts = null, isRaceDay = false, isPostRace = false, isCarboLoading = false) {
+        // Start with base calculation using the race/carb loading flags
+        console.log(`🧮 Nutrition calculation for ${date}:`, {
+            workoutType, duration, isRaceDay, isPostRace, isCarboLoading
+        });
+        
+        let nutrition = this.calculate(bodyWeightLbs, goals, workoutType, duration, isRaceDay, isPostRace, isCarboLoading);
+        
+        console.log(`📊 Base nutrition calculated:`, nutrition);
         
         // Check if we have completion data for this date
         if (workouts && workouts.length > 0 && typeof workoutCompletionTracker !== 'undefined') {
             const completionAdjustments = this.analyzeWorkoutsForAdjustments(workouts, date);
             if (completionAdjustments) {
                 nutrition = workoutCompletionTracker.applyAdjustmentToNutrition(nutrition, completionAdjustments);
+                console.log(`📊 Applied completion adjustments:`, nutrition);
             }
         }
         
