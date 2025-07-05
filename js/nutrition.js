@@ -1,10 +1,9 @@
-// Enhanced Nutrition Calculator with Completion Adjustments
 const nutritionCalculator = {
     calculate(bodyWeightLbs = null, goals = null, workoutType = null, duration = null, isRaceDay = false, isPostRace = false, isCarboLoading = false, completionAdjustments = null) {
-        const bw = bodyWeightLbs !== null ? bodyWeightLbs : parseInt(document.getElementById('bodyWeight').value);
-        const currentGoals = goals !== null ? goals : document.getElementById('goals').value;
-        const wt = workoutType !== null ? workoutType : document.getElementById('workoutType').value;
-        const dur = duration !== null ? duration : parseInt(document.getElementById('duration').value);
+        const bw = bodyWeightLbs !== null ? bodyWeightLbs : parseInt(document.getElementById('bodyWeight')?.value || 192);
+        const currentGoals = goals !== null ? goals : document.getElementById('goals')?.value || 'performance';
+        const wt = workoutType !== null ? workoutType : document.getElementById('workoutType')?.value || 'none';
+        const dur = duration !== null ? duration : parseInt(document.getElementById('duration')?.value || 0);
         
         const bodyWeightKg = bw * 0.453592;
 
@@ -20,7 +19,7 @@ const nutritionCalculator = {
         };
 
         // Apply completion-based adjustments if available
-        if (completionAdjustments) {
+        if (completionAdjustments && typeof workoutCompletionTracker !== 'undefined') {
             finalNutrition = workoutCompletionTracker.applyAdjustmentToNutrition(finalNutrition, completionAdjustments);
         }
 
@@ -33,7 +32,7 @@ const nutritionCalculator = {
         let nutrition = this.calculate(bodyWeightLbs, goals, workoutType, duration);
         
         // Check if we have completion data for this date
-        if (workouts && workouts.length > 0) {
+        if (workouts && workouts.length > 0 && typeof workoutCompletionTracker !== 'undefined') {
             const completionAdjustments = this.analyzeWorkoutsForAdjustments(workouts, date);
             if (completionAdjustments) {
                 nutrition = workoutCompletionTracker.applyAdjustmentToNutrition(nutrition, completionAdjustments);
@@ -45,6 +44,8 @@ const nutritionCalculator = {
 
     // Analyze workouts for completion-based adjustments
     analyzeWorkoutsForAdjustments(workouts, date) {
+        if (typeof workoutCompletionTracker === 'undefined') return null;
+        
         const selectedDate = new Date(date);
         const today = new Date();
         
@@ -77,6 +78,8 @@ const nutritionCalculator = {
                     totalAdjustment.timing.push(...adj.timing);
                     totalAdjustment.recovery.push(...adj.recovery);
                     hasAdjustments = true;
+                    
+                    console.log(`📊 Applied adjustment for ${workout.name}: ${adj.calories} cal, reason: ${adj.reasoning.join(', ')}`);
                 }
             }
         });
@@ -99,7 +102,6 @@ const nutritionCalculator = {
             switch (workoutType) {
                 case 'none':
                 case 'easy':
-                    // Set a sensible MAINTENANCE rest day baseline (~2250 calories)
                     p_mult = 1.8; f_mult = 1.0; c_mult = 2.5; 
                     break;
                 case 'endurance':
@@ -123,24 +125,20 @@ const nutritionCalculator = {
         if (isRegularDay) {
             switch(goals) {
                 case 'weight-loss':
-                    // *** FIX: On a rest day, explicitly set the 2000 cal target. ***
                     if (workoutType === 'none' || workoutType === 'easy') {
                         p_mult = 1.72; f_mult = 0.92; c_mult = 1.95;
                     } else {
-                        // On harder days, create a deficit from the maintenance baseline.
                         f_mult = Math.max(0.8, f_mult - 0.2);
                         c_mult = Math.max(2.0, c_mult - 1.0);
                     }
                     break;
                 
                 case 'performance':
-                    // Add a surplus for performance focus on all regular days.
                     p_mult += 0.2;
                     c_mult += 1.5;
                     break;
 
                 case 'maintenance':
-                    // No changes needed, use the baseline determined in Step 1.
                     break;
             }
         }
