@@ -3,361 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Workout Nutrition Calculator with MyFitnessPal</title>
+    <title>Enhanced Workout Nutrition Calculator</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        /* Terra API Integration Styles */
-        .mfp-connection {
-            background: linear-gradient(135deg, #0072CE, #004B87);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 25px rgba(0, 114, 206, 0.3);
-        }
-
-        .mfp-connection h3 {
-            color: white;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.3em;
-        }
-
-        .mfp-status {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-
-        .connection-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-        }
-
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4caf50;
-        }
-
-        .status-indicator.disconnected {
-            background: #f44336;
-        }
-
-        .connect-btn {
-            background: white;
-            color: #0072CE;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .connect-btn:hover {
-            background: #f0f8ff;
-            transform: translateY(-2px);
-        }
-
-        .disconnect-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 16px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            font-size: 0.9em;
-            cursor: pointer;
-        }
-
-        .sync-info {
-            font-size: 0.9em;
-            opacity: 0.9;
-            margin-top: 10px;
-        }
-
-        /* Nutrition Comparison Styles */
-        .nutrition-comparison {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            margin-top: 20px;
-        }
-
-        .adherence-summary {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            padding: 25px;
-            text-align: center;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .adherence-score {
-            font-size: 3em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .adherence-score.excellent { color: #28a745; }
-        .adherence-score.good { color: #17a2b8; }
-        .adherence-score.needs-improvement { color: #fd7e14; }
-
-        .adherence-text {
-            font-size: 1.1em;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 8px;
-        }
-
-        .data-source {
-            font-size: 0.9em;
-            color: #6c757d;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-        }
-
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 25px;
-        }
-
-        .comparison-item {
-            text-align: center;
-        }
-
-        .macro-label {
-            font-size: 1.1em;
-            font-weight: 600;
-            color: #343a40;
-            margin-bottom: 12px;
-        }
-
-        .planned-actual {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .planned {
-            background: #e9f4ff;
-            color: #0066cc;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 0.95em;
-            font-weight: 500;
-        }
-
-        .actual {
-            padding: 10px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 1.05em;
-        }
-
-        .actual.good {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .actual.fair {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-
-        .actual.poor {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        /* Meal Breakdown Styles */
-        .meal-breakdown {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 25px;
-            margin-top: 20px;
-        }
-
-        .meal-breakdown h4 {
-            color: #343a40;
-            margin-bottom: 20px;
-            font-size: 1.2em;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .meals-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-        }
-
-        .meal-item {
-            background: white;
-            border-radius: 10px;
-            padding: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #e9ecef;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .meal-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .meal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-
-        .meal-icon {
-            font-size: 1.3em;
-            margin-right: 8px;
-        }
-
-        .meal-name {
-            font-weight: 600;
-            color: #343a40;
-            flex-grow: 1;
-        }
-
-        .meal-status {
-            font-size: 0.8em;
-            padding: 3px 8px;
-            border-radius: 12px;
-            background: #e9ecef;
-            color: #6c757d;
-        }
-
-        .meal-calories {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #0072CE;
-            margin-bottom: 5px;
-        }
-
-        .meal-breakdown-macros {
-            font-size: 0.9em;
-            color: #6c757d;
-            margin-bottom: 8px;
-        }
-
-        .meal-foods {
-            font-size: 0.85em;
-            color: #495057;
-            line-height: 1.4;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🗓️ Enhanced Nutrition Calendar</h1>
-            <p>Plan your nutrition strategy with smart completion tracking and MyFitnessPal integration</p>
+            <p>Plan your nutrition strategy with smart completion tracking</p>
         </div>
 
         <div class="calendar-container">
-            <div class="calendar-with-summary">
-                <div class="calendar-main">
-                    <!-- MyFitnessPal Connection Section -->
-                    <div class="mfp-connection">
-                        <h3>📱 MyFitnessPal Integration</h3>
-                        <div class="mfp-status">
-                            <div class="connection-status">
-                                <div id="mfpStatusIndicator" class="status-indicator disconnected"></div>
-                                <span id="mfpStatusText">Not connected</span>
-                            </div>
-                            <div>
-                                <button id="connectMFPBtn" class="connect-btn">Connect to MyFitnessPal</button>
-                                <button id="disconnectMFPBtn" class="disconnect-btn" style="display: none;">Disconnect</button>
-                            </div>
-                        </div>
-                        <div id="mfpSyncInfo" class="sync-info">Connect to sync nutrition data and compare actual vs planned intake</div>
+            <div class="section">
+                <h2>⚙️ Settings</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="apiKey">API Key</label>
+                        <input type="password" id="apiKey" placeholder="Enter your API key" value="5b7vz3ozlxd42dqx0udbrq7e2">
                     </div>
-
-                    <div class="section">
-                        <h2>⚙️ Settings</h2>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="apiKey">Intervals.icu API Key</label>
-                                <input type="password" id="apiKey" placeholder="Enter your API key" value="5b7vz3ozlxd42dqx0udbrq7e2">
-                            </div>
-                            <div class="form-group">
-                                <label for="bodyWeight">Body Weight (lbs)</label>
-                                <input type="number" id="bodyWeight" min="100" max="250" value="192">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="goals">Current Goals</label>
-                                <select id="goals">
-                                    <option value="weight-loss">Weight Loss</option>
-                                    <option value="maintenance">Maintenance</option>
-                                    <option value="performance">Performance Focus</option>
-                                </select>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="bodyWeight">Body Weight (lbs)</label>
+                        <input type="number" id="bodyWeight" min="100" max="250" value="192">
                     </div>
-
-                    <div class="legend" id="legend" style="display: none;">
-                        <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
-                        <div class="legend-item"><div class="legend-color" style="background: #f44336;"></div><span>Race Day</span></div>
-                        <div class="legend-item"><div class="legend-color" style="background: #B6C454;"></div><span>Carb Loading</span></div>
-                        <div class="legend-item"><div class="legend-color" style="background: #006989; opacity: 0.5"></div><span>Post-Race Recovery</span></div>
-                        <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>Completed Workout</span></div>
-                        <div class="legend-item"><div class="legend-color" style="background: #0072CE;"></div><span>📱 MyFitnessPal Data</span></div>
-                    </div>
-
-                    <div class="calendar-header" id="calendarHeader" style="display: none;">
-                        <div class="calendar-nav">
-                            <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
-                            <div class="month-year" id="monthYear"></div>
-                            <button class="nav-btn" onclick="calendarManager.nextMonth()">Next ›</button>
-                        </div>
-                        <button class="button" onclick="calendarManager.goToToday()">Today</button>
-                    </div>
-
-                    <div class="loading" id="loadingState">
-                        <h3>Loading your enhanced nutrition calendar...</h3>
-                        <p>Fetching workouts and completion data from Intervals.icu...</p>
-                        <p>Connect MyFitnessPal above to see actual vs planned nutrition!</p>
-                    </div>
-
-                    <div class="calendar-grid" id="calendarGrid">
-                        <div class="calendar-header-cell">Sun</div>
-                        <div class="calendar-header-cell">Mon</div>
-                        <div class="calendar-header-cell">Tue</div>
-                        <div class="calendar-header-cell">Wed</div>
-                        <div class="calendar-header-cell">Thu</div>
-                        <div class="calendar-header-cell">Fri</div>
-                        <div class="calendar-header-cell">Sat</div>
-                    </div>
-                    <div class="mobile-list" id="mobileList"></div>
                 </div>
-
-                <div class="summary-section" id="weeklySummary" style="display: none;">
-                    <h3>📊 Weekly Summary</h3>
-                    <div id="weeklySummaryContent">
-                        <!-- Weekly summary will be inserted here -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="goals">Current Goals</label>
+                        <select id="goals">
+                            <option value="weight-loss">Weight Loss</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="performance">Performance Focus</option>
+                        </select>
                     </div>
                 </div>
             </div>
+
+            <div class="legend" id="legend" style="display: none;">
+                <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #f44336;"></div><span>Race Day</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #B6C454;"></div><span>Carb Loading</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #006989; opacity: 0.5"></div><span>Post-Race Recovery</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>Completed Workout</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>📊 Nutrition Adjusted</span></div>
+            </div>
+
+            <div class="calendar-header" id="calendarHeader" style="display: none;">
+                <div class="calendar-nav">
+                    <button class="nav-btn" onclick="calendarManager.previousMonth()">‹ Previous</button>
+                    <div class="month-year" id="monthYear"></div>
+                    <button class="nav-btn" onclick="calendarManager.nextMonth()">Next ›</button>
+                </div>
+                <button class="button" onclick="calendarManager.goToToday()">Today</button>
+            </div>
+
+            <div class="loading" id="loadingState">
+                <h3>Loading your enhanced nutrition calendar...</h3>
+                <p>Fetching workouts and completion data from Intervals.icu...</p>
+            </div>
+
+            <div class="calendar-grid" id="calendarGrid">
+                <div class="calendar-header-cell">Sun</div>
+                <div class="calendar-header-cell">Mon</div>
+                <div class="calendar-header-cell">Tue</div>
+                <div class="calendar-header-cell">Wed</div>
+                <div class="calendar-header-cell">Thu</div>
+                <div class="calendar-header-cell">Fri</div>
+                <div class="calendar-header-cell">Sat</div>
+            </div>
+            <div class="mobile-list" id="mobileList"></div>
+
         </div>
     </div>
 
@@ -376,20 +90,10 @@
     <script src="js/nutrition.js"></script>
     <script src="js/calendar.js"></script>
     <script>
-        // Ensure all scripts are loaded before initializing
-        function initializeApp() {
-            if (typeof nutritionCalculator !== 'undefined' && 
-                typeof calendarManager !== 'undefined' && 
-                typeof intervalsAPI !== 'undefined') {
-                console.log('🗓️ Enhanced Nutrition Calendar with MyFitnessPal Integration Initialized');
-                calendarManager.init();
-            } else {
-                console.log('Waiting for scripts to load...');
-                setTimeout(initializeApp, 100);
-            }
-        }
-        
-        document.addEventListener('DOMContentLoaded', initializeApp);
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🗓️ Enhanced Nutrition Calendar with Completion Tracking Initialized');
+            calendarManager.init();
+        });
     </script>
 </body>
 </html>
