@@ -409,5 +409,3 @@ const nutritionCalculator = {
         };
     }
 };
-    }
-};
