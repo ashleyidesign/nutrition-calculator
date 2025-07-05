@@ -187,7 +187,7 @@ const nutritionCalculator = {
     },
 
     // Format nutrition results for display
-    formatNutritionResults(nutrition) {
+    formatNutritionResults(nutrition, nutritionData = null) {
         let html = `
             <div class="nutrition-card">
                 <h3>🎯 Daily Nutrition Target</h3>
@@ -248,6 +248,11 @@ const nutritionCalculator = {
             html += `</div>`;
         }
 
+        // Add nutrition tracking if data is available
+        if (nutritionData) {
+            html += this.formatNutritionTracking(nutrition, nutritionData);
+        }
+
         // Add fueling information
         if (nutrition.fueling) {
             html += `
@@ -264,5 +269,145 @@ const nutritionCalculator = {
 
         html += `</div>`;
         return html;
+    },
+
+    // Format nutrition tracking with progress circles
+    formatNutritionTracking(target, actual) {
+        const caloriesPercent = Math.round((actual.calories / target.calories) * 100);
+        const proteinPercent = Math.round((actual.protein / target.protein) * 100);
+        const carbsPercent = Math.round((actual.carbs / target.carbs) * 100);
+        const fatPercent = Math.round((actual.fat / target.fat) * 100);
+        
+        const overallAdherence = Math.round((caloriesPercent + proteinPercent + carbsPercent + fatPercent) / 4);
+        
+        return `
+            <div class="nutrition-tracking">
+                <h4>📊 Nutrition Tracking <span class="sample-data">(Sample Data from MyFitnessPal)</span></h4>
+                
+                <div class="adherence-summary">
+                    <div class="adherence-score">${overallAdherence}%</div>
+                    <div class="adherence-text">Overall Nutrition Adherence ${overallAdherence >= 85 ? '✅' : overallAdherence >= 70 ? '⚠️' : '❌'}</div>
+                </div>
+                
+                <div class="progress-grid">
+                    <div class="progress-item">
+                        <div class="progress-circle">
+                            <svg>
+                                <circle class="bg-circle" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress-ring calories" cx="60" cy="60" r="50" 
+                                        stroke-dasharray="314" stroke-dashoffset="${314 - (314 * caloriesPercent / 100)}"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <div class="progress-percentage">${caloriesPercent}%</div>
+                            </div>
+                        </div>
+                        <div class="progress-label">Calories</div>
+                        <div class="progress-values">${actual.calories.toLocaleString()} / ${target.calories.toLocaleString()}</div>
+                    </div>
+
+                    <div class="progress-item">
+                        <div class="progress-circle">
+                            <svg>
+                                <circle class="bg-circle" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress-ring protein" cx="60" cy="60" r="50" 
+                                        stroke-dasharray="314" stroke-dashoffset="${314 - (314 * proteinPercent / 100)}"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <div class="progress-percentage">${proteinPercent}%</div>
+                            </div>
+                        </div>
+                        <div class="progress-label">Protein</div>
+                        <div class="progress-values">${actual.protein}g / ${target.protein}g</div>
+                    </div>
+
+                    <div class="progress-item">
+                        <div class="progress-circle">
+                            <svg>
+                                <circle class="bg-circle" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress-ring carbs" cx="60" cy="60" r="50" 
+                                        stroke-dasharray="314" stroke-dashoffset="${314 - (314 * carbsPercent / 100)}"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <div class="progress-percentage">${carbsPercent}%</div>
+                            </div>
+                        </div>
+                        <div class="progress-label">Carbs</div>
+                        <div class="progress-values">${actual.carbs}g / ${target.carbs}g</div>
+                    </div>
+
+                    <div class="progress-item">
+                        <div class="progress-circle">
+                            <svg>
+                                <circle class="bg-circle" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress-ring fat" cx="60" cy="60" r="50" 
+                                        stroke-dasharray="314" stroke-dashoffset="${314 - (314 * fatPercent / 100)}"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <div class="progress-percentage">${fatPercent}%</div>
+                            </div>
+                        </div>
+                        <div class="progress-label">Fat</div>
+                        <div class="progress-values">${actual.fat}g / ${target.fat}g</div>
+                    </div>
+                </div>
+
+                ${actual.meals ? this.formatMealTiming(actual.meals) : ''}
+            </div>
+        `;
+    },
+
+    // Format meal timing information
+    formatMealTiming(meals) {
+        return `
+            <div class="timing-notes">
+                ${meals.map(meal => `
+                    <div class="meal-timing">
+                        <h5>${meal.icon} ${meal.name}</h5>
+                        <p><strong>Consumed:</strong> ${meal.calories} calories</p>
+                        <p>${meal.foods}</p>
+                        <p><strong>Status:</strong> ${meal.status}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    },
+
+    // Generate sample nutrition data for testing
+    generateSampleNutritionData(target, date) {
+        // Generate realistic sample data based on target
+        const variance = 0.85 + (Math.random() * 0.3); // 85% to 115% of target
+        
+        return {
+            date: date,
+            calories: Math.round(target.calories * variance),
+            protein: Math.round(target.protein * (0.9 + Math.random() * 0.2)),
+            carbs: Math.round(target.carbs * (0.7 + Math.random() * 0.4)),
+            fat: Math.round(target.fat * (0.8 + Math.random() * 0.4)),
+            meals: [
+                {
+                    icon: "🌅",
+                    name: "Pre-Workout (5:30 AM)",
+                    calories: 680,
+                    foods: "Oatmeal, banana, coffee",
+                    status: "On target ✅"
+                },
+                {
+                    icon: "⚡",
+                    name: "During Workout (6:00-9:05 AM)",
+                    calories: 240,
+                    foods: "Sports drinks, gels",
+                    status: "30g carbs short ⚠️"
+                },
+                {
+                    icon: "🔄",
+                    name: "Post-Workout (9:30 AM)",
+                    calories: 1240,
+                    foods: "Recovery shake, sandwich",
+                    status: "Within 30 min ✅"
+                }
+            ]
+        };
+    }
+};
     }
 };
