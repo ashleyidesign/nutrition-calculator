@@ -1,4 +1,4 @@
-// Enhanced Nutrition Calculator with Completion Adjustments
+// Enhanced Nutrition Calculator with Fixed Macro Calculations
 const nutritionCalculator = {
     calculate(bodyWeightLbs = null, goals = null, workoutType = null, duration = null, isRaceDay = false, isPostRace = false, isCarboLoading = false, completionAdjustments = null) {
         const bw = bodyWeightLbs !== null ? bodyWeightLbs : parseInt(document.getElementById('bodyWeight').value);
@@ -96,7 +96,7 @@ const nutritionCalculator = {
     calculateMacros(bodyWeightKg, workoutType, duration, isRaceDay, isPostRace, isCarboLoading, goals) {
         let p_mult, f_mult, c_mult;
 
-        // Step 1: Set the baseline macros for the day type (assuming "Maintenance" goal)
+        // Step 1: Set the baseline macros for the day type
         if (isRaceDay) {
             p_mult = 2.2; f_mult = 1.7; c_mult = 8.6;
         } else if (isPostRace) {
@@ -104,52 +104,62 @@ const nutritionCalculator = {
         } else if (isCarboLoading) {
             p_mult = 1.7; f_mult = 1.0; c_mult = 8.2;
         } else {
-            // This is a regular training or rest day. Set "Maintenance" as the baseline.
+            // This is a regular training or rest day - use FUELIN baseline (~2250 calories for maintenance)
             switch (workoutType) {
                 case 'none':
                 case 'easy':
-                    // Set a sensible MAINTENANCE rest day baseline (~2250 calories)
+                    // Rest/Easy day baseline (matches Fuelin's ~2250 cal target for 192lb athlete)
                     p_mult = 1.8; f_mult = 1.0; c_mult = 2.5; 
                     break;
                 case 'endurance':
-                    p_mult = 1.8; f_mult = 1.1; c_mult = 4.3 + (duration > 120 ? 1.0 : 0);
+                    // Long endurance workout (Z1-Z2)
+                    p_mult = 1.8; f_mult = 1.1; c_mult = 4.5 + (duration > 120 ? 1.0 : 0);
                     break;
                 case 'tempo':
+                    // Tempo workout (Z3) - moderate carbs
+                    p_mult = 1.75; f_mult = 1.0; c_mult = 5.5;
+                    break;
                 case 'threshold':
+                    // Threshold workout (Z4) - higher carbs
+                    p_mult = 1.7; f_mult = 1.0; c_mult = 6.2;
+                    break;
                 case 'intervals':
-                     p_mult = 1.7; f_mult = 1.0; c_mult = 6.4;
-                     break;
+                    // High intensity intervals (Z5+) - highest carbs
+                    p_mult = 1.7; f_mult = 1.0; c_mult = 6.8;
+                    break;
                 case 'strength':
-                     p_mult = 1.9; f_mult = 1.1; c_mult = 3.5;
-                     break;
+                    // Strength training - higher protein, moderate carbs
+                    p_mult = 1.9; f_mult = 1.1; c_mult = 4.0;
+                    break;
                 default:
                     p_mult = 1.7; f_mult = 1.0; c_mult = 2.5;
             }
         }
         
-        // Step 2: If it's a regular day, apply adjustments based on the selected goal
+        // Step 2: Apply goal-based adjustments for regular training days only
         const isRegularDay = !isRaceDay && !isPostRace && !isCarboLoading;
         if (isRegularDay) {
             switch(goals) {
                 case 'weight-loss':
-                    // *** FIX: On a rest day, explicitly set the 2000 cal target. ***
+                    // Create deficit from baseline
                     if (workoutType === 'none' || workoutType === 'easy') {
+                        // Target ~2000 calories for rest days during weight loss
                         p_mult = 1.72; f_mult = 0.92; c_mult = 1.95;
                     } else {
-                        // On harder days, create a deficit from the maintenance baseline.
+                        // Reduce from baseline for workout days
                         f_mult = Math.max(0.8, f_mult - 0.2);
                         c_mult = Math.max(2.0, c_mult - 1.0);
                     }
                     break;
                 
                 case 'performance':
-                    // Add a surplus for performance focus on all regular days.
+                    // Add surplus for performance focus
                     p_mult += 0.2;
                     c_mult += 1.5;
                     break;
 
                 case 'maintenance':
-                    // No changes needed, use the baseline determined in Step 1.
+                    // Use baseline as-is (already matches Fuelin targets)
                     break;
             }
         }

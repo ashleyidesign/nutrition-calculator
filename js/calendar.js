@@ -84,11 +84,12 @@ const calendarManager = {
         this.updateMonthYear();
         
         const grid = document.getElementById('calendarGrid');
+        // Updated header to start with Monday
         grid.innerHTML = `
-            <div class="calendar-header-cell">Sun</div><div class="calendar-header-cell">Mon</div>
-            <div class="calendar-header-cell">Tue</div><div class="calendar-header-cell">Wed</div>
-            <div class="calendar-header-cell">Thu</div><div class="calendar-header-cell">Fri</div>
-            <div class="calendar-header-cell">Sat</div>
+            <div class="calendar-header-cell">Mon</div><div class="calendar-header-cell">Tue</div>
+            <div class="calendar-header-cell">Wed</div><div class="calendar-header-cell">Thu</div>
+            <div class="calendar-header-cell">Fri</div><div class="calendar-header-cell">Sat</div>
+            <div class="calendar-header-cell">Sun</div>
         `;
         
         const mobileList = document.getElementById('mobileList');
@@ -97,10 +98,14 @@ const calendarManager = {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
-        const startingDayOfWeek = firstDay.getDay();
+        
+        // Calculate starting day of week with Monday as 0
+        let startingDayOfWeek = firstDay.getDay() - 1; // Convert Sunday=0 to Monday=0
+        if (startingDayOfWeek < 0) startingDayOfWeek = 6; // Handle Sunday case
         
         const allDays = [];
         
+        // Add previous month days to fill the first week
         const prevMonth = new Date(year, month, 0);
         for (let i = startingDayOfWeek - 1; i >= 0; i--) {
             const day = prevMonth.getDate() - i;
@@ -108,12 +113,14 @@ const calendarManager = {
             grid.appendChild(this.createDayElement(day, true, fullDate));
         }
         
+        // Add current month days
         for (let day = 1; day <= daysInMonth; day++) {
             const fullDate = new Date(year, month, day);
             grid.appendChild(this.createDayElement(day, false, fullDate));
             allDays.push({ day, fullDate, isCurrentMonth: true });
         }
         
+        // Add next month days to fill the last week
         const totalCells = startingDayOfWeek + daysInMonth;
         const cellsNeeded = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
 
