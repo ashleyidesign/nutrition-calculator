@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Workout Nutrition Calculator</title>
+    <title>Workout Nutrition Calculator</title>
     <link rel="stylesheet" href="styles.css">
+
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🗓️ Enhanced Nutrition Calendar</h1>
-            <p>Plan your nutrition strategy with smart completion tracking</p>
+            <h1>🗓️ Nutrition Calendar</h1>
+            <p>Plan your nutrition strategy for training and racing</p>
         </div>
 
         <div class="calendar-container">
@@ -36,15 +37,13 @@
                         </select>
                     </div>
                 </div>
-            </div>
+                </div>
 
             <div class="legend" id="legend" style="display: none;">
                 <div class="legend-item"><div class="legend-color" style="background: #006989;"></div><span>Workout</span></div>
                 <div class="legend-item"><div class="legend-color" style="background: #f44336;"></div><span>Race Day</span></div>
                 <div class="legend-item"><div class="legend-color" style="background: #B6C454;"></div><span>Carb Loading</span></div>
                 <div class="legend-item"><div class="legend-color" style="background: #006989; opacity: 0.5"></div><span>Post-Race Recovery</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>Completed Workout</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #4caf50;"></div><span>📊 Nutrition Adjusted</span></div>
             </div>
 
             <div class="calendar-header" id="calendarHeader" style="display: none;">
@@ -57,8 +56,7 @@
             </div>
 
             <div class="loading" id="loadingState">
-                <h3>Loading your enhanced nutrition calendar...</h3>
-                <p>Fetching workouts and completion data from Intervals.icu...</p>
+                <h3>Loading your nutrition calendar...</h3>
             </div>
 
             <div class="calendar-grid" id="calendarGrid">
@@ -91,7 +89,7 @@
     <script src="js/calendar.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🗓️ Enhanced Nutrition Calendar with Completion Tracking Initialized');
+            console.log('🗓️ Nutrition Calendar Initialized');
             calendarManager.init();
         });
     </script>

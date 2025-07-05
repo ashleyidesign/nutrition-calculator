@@ -26,33 +26,7 @@ const intervalsAPI = {
         return data.events || [];
     },
     
-    // Load all activities for a date range (completed workouts)
-    async loadActivitiesForDateRange(apiKey, athleteId, startDate, endDate) {
-        console.log('🏃 API: Loading activities for range', startDate, 'to', endDate);
-        
-        const response = await fetch('/api/intervals', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                athleteId: athleteId,
-                apiKey: apiKey,
-                oldest: startDate,
-                newest: endDate,
-                type: 'activities' // We'll modify the endpoint to handle this
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Activities API Error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Activities API response:', data);
-        
-        return data.activities || [];
-    },
+    // Load workouts for multiple dates (for calendar view)
     async loadWorkoutsForDateRange(apiKey, athleteId, startDate, endDate) {
         console.log('🔥 API: Loading workouts for range', startDate, 'to', endDate);
         
@@ -84,6 +58,8 @@ const intervalsAPI = {
         console.log('🎯 API: Loading activity details for', activityId);
         
         try {
+            // Note: This would need to be implemented in your API endpoint
+            // Intervals.icu endpoint: /api/v1/athlete/{id}/activities/{activityId}
             const response = await fetch('/api/intervals-activity', {
                 method: 'POST',
                 headers: {
@@ -97,14 +73,11 @@ const intervalsAPI = {
             });
             
             if (!response.ok) {
-                console.warn(`Activity API Error: ${response.status} for activity ${activityId}`);
-                return null;
+                throw new Error(`Activity API Error: ${response.status}`);
             }
             
-            const data = await response.json();
-            console.log('🔍 Raw API response for activity', activityId, ':', data);
-            
-            return data.activity ? this.processActivityData(data.activity) : null;
+            const activityData = await response.json();
+            return this.processActivityData(activityData);
             
         } catch (error) {
             console.warn('Could not load activity details:', error);
@@ -114,46 +87,70 @@ const intervalsAPI = {
 
     // Process raw activity data into usable completion data
     processActivityData(rawData) {
-        console.log('🔍 Processing activity data:', rawData);
-        
-        // Handle the case where rawData might be nested under 'activity'
-        const activityData = rawData.activity || rawData;
-        
-        const processedData = {
-            id: activityData.id,
-            actualDuration: Math.round((activityData.moving_time || activityData.elapsed_time || 0) / 60),
-            avgHeartRate: activityData.average_heartrate,
-            maxHeartRate: activityData.max_heartrate,
-            avgPower: activityData.average_watts,
-            maxPower: activityData.max_watts,
-            avgCadence: activityData.average_cadence,
-            elevationGain: activityData.total_elevation_gain,
-            distance: activityData.distance,
-            avgSpeed: activityData.average_speed,
-            calories: activityData.kilojoules ? Math.round(activityData.kilojoules / 4.184) : null,
-            trainingStressScore: activityData.training_stress_score,
-            perceivedEffort: activityData.perceived_exertion || null,
-            description: activityData.description,
-            workoutCode: activityData.workout_code
+        return {
+            id: rawData.id,
+            actualDuration: Math.round((rawData.moving_time || rawData.elapsed_time) / 60),
+            avgHeartRate: rawData.average_heartrate,
+            maxHeartRate: rawData.max_heartrate,
+            avgPower: rawData.average_watts,
+            maxPower: rawData.max_watts,
+            avgCadence: rawData.average_cadence,
+            elevationGain: rawData.total_elevation_gain,
+            distance: rawData.distance,
+            avgSpeed: rawData.average_speed,
+            calories: rawData.kilojoules ? Math.round(rawData.kilojoules / 4.184) : null,
+            trainingStressScore: rawData.weighted_average_watts ? this.calculateTSS(rawData) : null,
+            perceivedEffort: rawData.perceived_exertion || null,
+            description: rawData.description,
+            workoutCode: rawData.workout_code
         };
+    },
+
+    // Calculate Training Stress Score approximation
+    calculateTSS(activityData) {
+        if (!activityData.weighted_average_watts || !activityData.moving_time) return null;
         
-        console.log('✅ Processed activity data:', processedData);
-        return processedData;
+        // Basic TSS calculation: (duration_hours * NP^2 * IF) / (FTP * 3600) * 100
+        // This is simplified - you'd need FTP data for accurate calculation
+        const durationHours = activityData.moving_time / 3600;
+        const estimatedFTP = 250; // This should come from athlete profile
+        const normalizedPower = activityData.weighted_average_watts || activityData.average_watts;
+        const intensityFactor = normalizedPower / estimatedFTP;
+        
+        return Math.round((durationHours * normalizedPower * intensityFactor) / (estimatedFTP * 3600) * 100);
+    },
+
+    // Enhanced workout processing with completion data
+    async loadWorkoutsWithCompletionData(apiKey, athleteId, date) {
+        const workouts = await this.loadWorkouts(apiKey, athleteId, date);
+        
+        // For each workout, try to load completion data if it's a past workout
+        const selectedDate = new Date(date);
+        const today = new Date();
+        
+        if (selectedDate < today) {
+            for (const workout of workouts) {
+                if (workout.id) {
+                    const completionData = await this.loadActivityDetails(apiKey, athleteId, workout.id);
+                    if (completionData) {
+                        workout.completionData = completionData;
+                        workout.isCompleted = true;
+                    }
+                }
+            }
+        }
+        
+        return workouts;
     },
 
     // Enhanced range loading with completion data for past workouts
     async loadWorkoutsForDateRangeWithCompletion(apiKey, athleteId, startDate, endDate) {
-        // Load both planned workouts (events) and completed workouts (activities)
-        const [events, activities] = await Promise.all([
-            this.loadWorkoutsForDateRange(apiKey, athleteId, startDate, endDate),
-            this.loadActivitiesForDateRange(apiKey, athleteId, startDate, endDate)
-        ]);
-        
+        const workouts = await this.loadWorkoutsForDateRange(apiKey, athleteId, startDate, endDate);
         const today = new Date();
         
-        // Process planned workouts and add completion data
+        // Group workouts by date for efficient processing
         const workoutsByDate = new Map();
-        events.forEach(workout => {
+        workouts.forEach(workout => {
             const workoutDate = workout.start_date_local.split('T')[0];
             if (!workoutsByDate.has(workoutDate)) {
                 workoutsByDate.set(workoutDate, []);
@@ -161,27 +158,18 @@ const intervalsAPI = {
             workoutsByDate.get(workoutDate).push(workout);
         });
         
-        // Add completion data to planned workouts
-        let completionCallsCount = 0;
-        const maxCompletionCalls = 15;
-        
+        // Load completion data for past workouts
         for (const [dateStr, dayWorkouts] of workoutsByDate) {
             const workoutDate = new Date(dateStr);
-            if (workoutDate < today && completionCallsCount < maxCompletionCalls) {
+            if (workoutDate < today) {
                 for (const workout of dayWorkouts) {
-                    if (workout.paired_activity_id && completionCallsCount < maxCompletionCalls) {
+                    if (workout.id) {
                         try {
-                            const activityId = workout.paired_activity_id.replace('i', '');
-                            console.log(`🔗 Found paired activity ${activityId} for planned workout ${workout.name}`);
-                            
-                            const completionData = await this.loadActivityDetails(apiKey, athleteId, activityId);
+                            const completionData = await this.loadActivityDetails(apiKey, athleteId, workout.id);
                             if (completionData) {
                                 workout.completionData = completionData;
                                 workout.isCompleted = true;
-                                workout.wasPlanned = true;
-                                console.log(`✅ Loaded completion data for planned workout ${workout.name}: ${completionData.actualDuration}min, RPE: ${completionData.perceivedEffort || 'N/A'}`);
                             }
-                            completionCallsCount++;
                         } catch (error) {
                             console.warn(`Could not load completion data for workout ${workout.id}:`, error);
                         }
@@ -190,55 +178,7 @@ const intervalsAPI = {
             }
         }
         
-        // Process activities and add unplanned workouts
-        const plannedActivityIds = new Set();
-        events.forEach(event => {
-            if (event.paired_activity_id) {
-                plannedActivityIds.add(event.paired_activity_id.replace('i', ''));
-            }
-        });
-        
-        activities.forEach(activity => {
-            const activityDate = activity.start_date_local.split('T')[0];
-            const activityDateObj = new Date(activityDate);
-            
-            // Only add activities that are in the past and weren't already planned
-            if (activityDateObj < today && !plannedActivityIds.has(activity.id.toString())) {
-                console.log(`🆕 Found unplanned activity: ${activity.name || activity.type}`);
-                
-                // Convert activity to workout format
-                const unplannedWorkout = {
-                    id: `activity_${activity.id}`,
-                    name: activity.name || `${activity.type} (Unplanned)`,
-                    type: activity.type,
-                    start_date_local: activity.start_date_local,
-                    moving_time: activity.moving_time,
-                    duration: activity.moving_time,
-                    category: 'WORKOUT',
-                    completionData: this.processActivityData(activity),
-                    isCompleted: true,
-                    wasPlanned: false,
-                    isUnplanned: true
-                };
-                
-                if (!workoutsByDate.has(activityDate)) {
-                    workoutsByDate.set(activityDate, []);
-                }
-                workoutsByDate.get(activityDate).push(unplannedWorkout);
-            }
-        });
-        
-        // Flatten back to array
-        const allWorkouts = [];
-        for (const dayWorkouts of workoutsByDate.values()) {
-            allWorkouts.push(...dayWorkouts);
-        }
-        
-        const completedCount = allWorkouts.filter(e => e.isCompleted).length;
-        const unplannedCount = allWorkouts.filter(e => e.isUnplanned).length;
-        console.log(`📊 Loaded ${allWorkouts.length} total workouts: ${completedCount} completed, ${unplannedCount} unplanned`);
-        
-        return allWorkouts;
+        return workouts;
     },
     
     // Default athlete ID and API key
@@ -247,6 +187,21 @@ const intervalsAPI = {
             athleteId: 'i290140',
             apiKey: document.getElementById('apiKey')?.value || '5b7vz3ozlxd42dqx0udbrq7e2'
         };
+    },
+
+    // Helper to determine if a workout is completed
+    isWorkoutCompleted(workout) {
+        return workout.isCompleted || workout.completionData;
+    },
+
+    // Get completion percentage for a workout
+    getCompletionPercentage(planned, actual) {
+        if (!actual) return 0;
+        
+        const plannedDuration = planned.duration || ((planned.moving_time || planned.elapsed_time) / 60);
+        const actualDuration = actual.actualDuration;
+        
+        return Math.round((actualDuration / plannedDuration) * 100);
     }
 };
 
@@ -254,6 +209,7 @@ const intervalsAPI = {
 const completionDataStore = {
     data: new Map(),
     
+    // Store completion analysis for a workout
     store(workoutId, date, analysis) {
         const key = `${date}_${workoutId}`;
         this.data.set(key, {
@@ -263,11 +219,13 @@ const completionDataStore = {
         });
     },
     
+    // Get completion analysis
     get(workoutId, date) {
         const key = `${date}_${workoutId}`;
         return this.data.get(key);
     },
     
+    // Get all completion data for a date
     getByDate(date) {
         const results = [];
         for (const [key, value] of this.data) {
@@ -278,6 +236,7 @@ const completionDataStore = {
         return results;
     },
     
+    // Mark adjustment as applied
     markApplied(workoutId, date) {
         const key = `${date}_${workoutId}`;
         const data = this.data.get(key);

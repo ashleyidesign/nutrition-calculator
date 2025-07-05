@@ -1,99 +1,8 @@
-// Include the Terra API code at the top of calendar.js
-const terraAPI = {
-    async checkAuthStatus() {
-        const stored = localStorage.getItem('terra_mfp_auth');
-        if (stored) {
-            const auth = JSON.parse(stored);
-            return auth.expires_at > Date.now();
-        }
-        return false;
-    },
-
-    async getAuthUrl() {
-        try {
-            const response = await fetch('/api/terra-auth', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (!response.ok) throw new Error(`Auth API error: ${response.status}`);
-            const data = await response.json();
-            return data.authUrl;
-        } catch (error) {
-            console.error('Terra auth URL error:', error);
-            throw error;
-        }
-    },
-
-    async fetchNutritionData(date, endDate = null) {
-        try {
-            console.log('🍎 Fetching MyFitnessPal nutrition data for', date);
-
-            const response = await fetch('/api/terra-nutrition', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: this.getUserId(),
-                    date: date,
-                    endDate: endDate
-                })
-            });
-
-            if (!response.ok) throw new Error(`Nutrition API error: ${response.status}`);
-            const data = await response.json();
-            
-            this.cacheNutritionData(date, data);
-            return data;
-        } catch (error) {
-            console.error('Terra nutrition fetch error:', error);
-            const cached = this.getCachedNutritionData(date);
-            if (cached) return cached;
-            throw error;
-        }
-    },
-
-    getUserId() {
-        const auth = localStorage.getItem('terra_mfp_auth');
-        return auth ? JSON.parse(auth).userId : 'demo_user';
-    },
-
-    cacheNutritionData(date, data) {
-        const cacheKey = `nutrition_${date}`;
-        const cacheData = { ...data, cachedAt: Date.now() };
-        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-    },
-
-    getCachedNutritionData(date) {
-        const cacheKey = `nutrition_${date}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-            const data = JSON.parse(cached);
-            if (Date.now() - data.cachedAt < 2 * 60 * 60 * 1000) return data;
-        }
-        return null;
-    },
-
-    storeAuthData(authData) {
-        const auth = { ...authData, expires_at: Date.now() + (24 * 60 * 60 * 1000) };
-        localStorage.setItem('terra_mfp_auth', JSON.stringify(auth));
-    },
-
-    clearAuth() {
-        localStorage.removeItem('terra_mfp_auth');
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('nutrition_')) localStorage.removeItem(key);
-        });
-    }
-};
-
-// Enhanced Calendar Manager with Terra Integration
 const calendarManager = {
-    // ... keep all existing properties ...
     currentDate: new Date(),
     events: [],
     bodyWeight: 192,
     goals: 'performance',
-    mfpConnected: false,
 
     workoutMapper: {
         map(workout) {
@@ -109,310 +18,17 @@ const calendarManager = {
         }
     },
     
-    async init() {
+    init() {
         this.updateMonthYear();
-        
-        // Check MyFitnessPal connection status
-        this.mfpConnected = await terraAPI.checkAuthStatus();
-        this.updateMFPConnectionStatus();
-        
         this.loadCalendarData(); 
         
         document.getElementById('goals')?.addEventListener('change', () => this.handleSettingsChange());
         document.getElementById('bodyWeight')?.addEventListener('change', () => this.handleSettingsChange());
         document.getElementById('apiKey')?.addEventListener('change', () => this.handleSettingsChange());
 
-        // Add MFP connection handlers
-        document.getElementById('connectMFPBtn')?.addEventListener('click', () => this.connectToMFP());
-        document.getElementById('disconnectMFPBtn')?.addEventListener('click', () => this.disconnectFromMFP());
-
         document.querySelector('.day-detail-modal')?.addEventListener('click', (e) => this.handleModalClick(e));
         document.querySelector('.modal-close')?.addEventListener('click', () => this.closeModal());
     },
-
-    updateMFPConnectionStatus() {
-        const statusIndicator = document.getElementById('mfpStatusIndicator');
-        const statusText = document.getElementById('mfpStatusText');
-        const connectBtn = document.getElementById('connectMFPBtn');
-        const disconnectBtn = document.getElementById('disconnectMFPBtn');
-        const syncInfo = document.getElementById('mfpSyncInfo');
-
-        if (this.mfpConnected) {
-            statusIndicator?.classList.remove('disconnected');
-            statusText.textContent = 'Connected to MyFitnessPal';
-            connectBtn.style.display = 'none';
-            disconnectBtn.style.display = 'inline-block';
-            syncInfo.textContent = 'Last sync: ' + new Date().toLocaleTimeString();
-        } else {
-            statusIndicator?.classList.add('disconnected');
-            statusText.textContent = 'Not connected';
-            connectBtn.style.display = 'inline-block';
-            disconnectBtn.style.display = 'none';
-            syncInfo.textContent = 'Connect to sync nutrition data';
-        }
-    },
-
-    async connectToMFP() {
-        try {
-            const authUrl = await terraAPI.getAuthUrl();
-            window.open(authUrl, '_blank', 'width=500,height=600');
-            
-            // Listen for auth completion (you'd implement this based on your callback)
-            this.listenForAuthCompletion();
-        } catch (error) {
-            alert('Failed to connect to MyFitnessPal: ' + error.message);
-        }
-    },
-
-    disconnectFromMFP() {
-        terraAPI.clearAuth();
-        this.mfpConnected = false;
-        this.updateMFPConnectionStatus();
-        this.renderCalendar(); // Refresh to remove MFP data
-    },
-
-    listenForAuthCompletion() {
-        // Simulate successful auth for demo
-        setTimeout(() => {
-            terraAPI.storeAuthData({ userId: 'demo_user_' + Date.now() });
-            this.mfpConnected = true;
-            this.updateMFPConnectionStatus();
-            this.renderCalendar(); // Refresh calendar with new data
-        }, 3000);
-    },
-    
-    // ... keep all existing methods but update calculateDayNutrition ...
-
-    async calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date) {
-        const totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
-        
-        let highestIntensity = 'none';
-        const intensityRanking = { 'none': 0, 'easy': 1, 'strength': 2, 'endurance': 3, 'tempo': 4, 'threshold': 5, 'intervals': 6 };
-        
-        dayEvents.forEach(event => {
-            const workoutType = this.workoutMapper.map(event);
-            if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
-                highestIntensity = workoutType;
-            }
-        });
-        
-        if (typeof nutritionCalculator === 'undefined') {
-            return {
-                calories: 2500, protein: 125, carbs: 300, fat: 85,
-                fueling: { duringWorkoutCarbs: 0, fluidIntake: 750, fuelingTips: [] }
-            };
-        }
-        
-        // Calculate base nutrition
-        let nutrition = nutritionCalculator.calculateWithCompletionData(
-            this.bodyWeight, this.goals, highestIntensity, totalDuration,
-            date, dayEvents, !!raceInfo, isPostRace, isCarboLoading
-        );
-
-        // Try to get actual MyFitnessPal data for past dates
-        const selectedDate = new Date(date);
-        const today = new Date();
-        
-        if (selectedDate < today && this.mfpConnected) {
-            try {
-                const actualData = await terraAPI.fetchNutritionData(date);
-                if (actualData) {
-                    nutrition.actualData = actualData;
-                    nutrition.hasActualData = true;
-                }
-            } catch (error) {
-                console.warn('Could not fetch actual nutrition data:', error);
-            }
-        }
-
-        return nutrition;
-    },
-
-    async showDayDetails(date, dayEvents, raceInfo, isCarboLoading, isPostRace) {
-        const modal = document.getElementById('dayDetailModal');
-        const modalDate = document.getElementById('modalDate');
-        const modalContent = document.getElementById('modalContent');
-        
-        modalDate.textContent = this.formatDateDisplay(date);
-        
-        // Show loading state
-        modalContent.innerHTML = '<div class="loading">Loading nutrition data...</div>';
-        modal.style.display = 'block';
-        
-        // Calculate nutrition (with potential MFP data)
-        const nutrition = await this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date);
-        
-        let headerText = '📅 Training Day';
-        if (raceInfo) headerText = `🏁 Race Day: ${raceInfo.name}`;
-        else if (isPostRace) headerText = '✅ Post-Race Recovery';
-        else if (isCarboLoading) headerText = '🍝 Carb Loading Day';
-        
-        let workoutDetailsHtml = '';
-        if (dayEvents.length > 0) {
-            workoutDetailsHtml = `
-                <h4>Scheduled Workouts:</h4>
-                <ul>
-                    ${dayEvents.map(e => {
-                        let workoutHtml = `<li><strong>${e.name || e.type}</strong> - ${Math.round((e.moving_time || e.duration || 3600) / 60)} minutes`;
-                        
-                        if (e.isCompleted && e.completionData) {
-                            const completion = e.completionData;
-                            workoutHtml += ` ✅`;
-                            if (completion.perceivedEffort) workoutHtml += ` (RPE: ${completion.perceivedEffort})`;
-                            if (completion.avgHeartRate) workoutHtml += ` (Avg HR: ${completion.avgHeartRate})`;
-                            if (completion.actualDuration !== Math.round((e.moving_time || e.duration || 3600) / 60)) {
-                                workoutHtml += ` (Actual: ${completion.actualDuration} min)`;
-                            }
-                        }
-                        
-                        workoutHtml += `</li>`;
-                        return workoutHtml;
-                    }).join('')}
-                </ul>
-            `;
-        }
-        
-        // Format nutrition results with actual vs planned if available
-        const nutritionHtml = nutrition.hasActualData ? 
-            this.formatNutritionWithActual(nutrition) : 
-            (typeof nutritionCalculator !== 'undefined' ? 
-                nutritionCalculator.formatNutritionResults(nutrition, nutrition.actualData) : 
-                this.formatBasicNutrition(nutrition));
-        
-        modalContent.innerHTML = `
-            <div class="section">
-                <h3>${headerText}</h3>
-                ${workoutDetailsHtml}
-                ${nutritionHtml}
-            </div>
-        `;
-        
-        // Animate progress circles after modal is shown
-        setTimeout(() => {
-            this.animateProgressCircles();
-        }, 100);
-    },
-
-    formatNutritionWithActual(nutrition) {
-        if (!nutrition.hasActualData) {
-            return nutritionCalculator.formatNutritionResults(nutrition);
-        }
-
-        const actual = nutrition.actualData;
-        const planned = {
-            calories: nutrition.calories,
-            protein: nutrition.protein,
-            carbs: nutrition.carbs,
-            fat: nutrition.fat
-        };
-
-        const adherence = {
-            calories: Math.round((actual.calories / planned.calories) * 100),
-            protein: Math.round((actual.protein / planned.protein) * 100),
-            carbs: Math.round((actual.carbs / planned.carbs) * 100),
-            fat: Math.round((actual.fat / planned.fat) * 100)
-        };
-
-        const overallAdherence = Math.round((adherence.calories + adherence.protein + adherence.carbs + adherence.fat) / 4);
-
-        return `
-            <div class="nutrition-comparison">
-                <h4>🎯 Nutrition Plan vs Actual ${actual.isMockData ? '(Sample Data)' : ''}</h4>
-                
-                <div class="adherence-summary">
-                    <div class="adherence-score ${overallAdherence >= 85 ? 'excellent' : overallAdherence >= 70 ? 'good' : 'needs-improvement'}">${overallAdherence}%</div>
-                    <div class="adherence-text">Overall Nutrition Adherence ${overallAdherence >= 85 ? '✅' : overallAdherence >= 70 ? '⚠️' : '❌'}</div>
-                    <div class="data-source">📱 Data from: MyFitnessPal ${actual.isMockData ? '(Demo)' : ''}</div>
-                </div>
-
-                <div class="comparison-grid">
-                    <div class="comparison-item">
-                        <div class="macro-label">Calories</div>
-                        <div class="planned-actual">
-                            <div class="planned">Target: ${planned.calories}</div>
-                            <div class="actual ${adherence.calories >= 85 ? 'good' : adherence.calories >= 70 ? 'fair' : 'poor'}">
-                                Actual: ${actual.calories} (${adherence.calories}%)
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="comparison-item">
-                        <div class="macro-label">Protein</div>
-                        <div class="planned-actual">
-                            <div class="planned">Target: ${planned.protein}g</div>
-                            <div class="actual ${adherence.protein >= 85 ? 'good' : adherence.protein >= 70 ? 'fair' : 'poor'}">
-                                Actual: ${actual.protein}g (${adherence.protein}%)
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="comparison-item">
-                        <div class="macro-label">Carbs</div>
-                        <div class="planned-actual">
-                            <div class="planned">Target: ${planned.carbs}g</div>
-                            <div class="actual ${adherence.carbs >= 85 ? 'good' : adherence.carbs >= 70 ? 'fair' : 'poor'}">
-                                Actual: ${actual.carbs}g (${adherence.carbs}%)
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="comparison-item">
-                        <div class="macro-label">Fat</div>
-                        <div class="planned-actual">
-                            <div class="planned">Target: ${planned.fat}g</div>
-                            <div class="actual ${adherence.fat >= 85 ? 'good' : adherence.fat >= 70 ? 'fair' : 'poor'}">
-                                Actual: ${actual.fat}g (${adherence.fat}%)
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                ${actual.meals ? this.formatMealBreakdown(actual.meals) : ''}
-            </div>
-        `;
-    },
-
-    formatMealBreakdown(meals) {
-        return `
-            <div class="meal-breakdown">
-                <h4>🍽️ Meal Breakdown</h4>
-                <div class="meals-grid">
-                    ${meals.map(meal => `
-                        <div class="meal-item">
-                            <div class="meal-header">
-                                <span class="meal-icon">${meal.icon}</span>
-                                <span class="meal-name">${meal.name}</span>
-                                <span class="meal-status">${meal.status}</span>
-                            </div>
-                            <div class="meal-macros">
-                                <div class="meal-calories">${meal.calories} cal</div>
-                                <div class="meal-breakdown-macros">
-                                    ${meal.protein}g P • ${meal.carbs}g C • ${meal.fat}g F
-                                </div>
-                            </div>
-                            <div class="meal-foods">${meal.foods}</div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    },
-
-    formatBasicNutrition(nutrition) {
-        return `
-            <div class="nutrition-card">
-                <h3>🎯 Daily Nutrition Target</h3>
-                <div class="macro-grid">
-                    <div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div>
-                    <div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div>
-                    <div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div>
-                    <div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div>
-                </div>
-            </div>
-        `;
-    },
-
-    // ... keep all other existing methods (renderCalendar, previousMonth, etc.) ...
     
     handleSettingsChange() {
         this.bodyWeight = parseInt(document.getElementById('bodyWeight').value);
@@ -435,7 +51,7 @@ const calendarManager = {
         }
         
         const loadingState = document.getElementById('loadingState');
-        loadingState.innerHTML = '<h3>Loading your enhanced nutrition calendar...</h3><p>Fetching workouts and completion data from Intervals.icu...</p>';
+        loadingState.innerHTML = '<h3>Loading your nutrition calendar with completion data...</h3>';
         loadingState.style.display = 'block';
         
         try {
@@ -444,44 +60,335 @@ const calendarManager = {
             
             const { athleteId } = intervalsAPI.getDefaults();
             
+            // Load workouts with completion data
             this.events = await intervalsAPI.loadWorkoutsForDateRangeWithCompletion(
                 apiKey, athleteId, this.formatDate(startDate), this.formatDate(endDate)
             );
             
-            const completedCount = this.events.filter(e => e.isCompleted).length;
-            console.log(`📊 Loaded ${this.events.length} events for calendar (${completedCount} with completion data)`);
+            console.log(`Loaded ${this.events.length} events for calendar (with completion data)`);
             
             loadingState.style.display = 'none';
             document.getElementById('legend').style.display = 'flex';
             document.getElementById('calendarHeader').style.display = 'flex';
-            document.getElementById('weeklySummary').style.display = 'block';
             
             this.renderCalendar();
-            this.renderWeeklySummary();
         } catch (error) {
             console.error('Calendar loading error:', error);
             loadingState.innerHTML = `<h3>Error loading calendar. Check your API key.</h3><p>${error.message}</p>`;
         }
     },
+    
+    renderCalendar() {
+        const year = this.currentDate.getFullYear();
+        const month = this.currentDate.getMonth();
+        this.updateMonthYear();
+        
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = `
+            <div class="calendar-header-cell">Sun</div><div class="calendar-header-cell">Mon</div>
+            <div class="calendar-header-cell">Tue</div><div class="calendar-header-cell">Wed</div>
+            <div class="calendar-header-cell">Thu</div><div class="calendar-header-cell">Fri</div>
+            <div class="calendar-header-cell">Sat</div>
+        `;
+        
+        const mobileList = document.getElementById('mobileList');
+        mobileList.innerHTML = '';
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDayOfWeek = firstDay.getDay();
+        
+        const allDays = [];
+        
+        const prevMonth = new Date(year, month, 0);
+        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+            const day = prevMonth.getDate() - i;
+            const fullDate = new Date(year, month - 1, day);
+            grid.appendChild(this.createDayElement(day, true, fullDate));
+        }
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+            const fullDate = new Date(year, month, day);
+            grid.appendChild(this.createDayElement(day, false, fullDate));
+            allDays.push({ day, fullDate, isCurrentMonth: true });
+        }
+        
+        const totalCells = startingDayOfWeek + daysInMonth;
+        const cellsNeeded = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
 
-    // Keep all the other existing methods unchanged...
-    renderCalendar() { /* existing code */ },
-    renderMobileList() { /* existing code */ },
-    createDayElement() { /* existing code */ },
-    getEventsForDate() { /* existing code */ },
-    analyzeDayType() { /* existing code */ },
-    calculateDaysUntilRace() { /* existing code */ },
-    findUpcomingRaces() { /* existing code */ },
-    animateProgressCircles() { /* existing code */ },
-    renderWeeklySummary() { /* existing code */ },
-    generateWeeklySummaryData() { /* existing code */ },
-    closeModal() { /* existing code */ },
-    handleModalClick() { /* existing code */ },
-    previousMonth() { /* existing code */ },
-    nextMonth() { /* existing code */ },
-    goToToday() { /* existing code */ },
-    updateMonthYear() { /* existing code */ },
-    formatDate() { /* existing code */ },
-    formatDateDisplay() { /* existing code */ },
-    isSameDate() { /* existing code */ }
+        for (let day = 1; day <= cellsNeeded; day++) {
+            const fullDate = new Date(year, month + 1, day);
+            grid.appendChild(this.createDayElement(day, true, fullDate));
+        }
+        
+        this.renderMobileList(allDays);
+    },
+    
+    renderMobileList(allDays) {
+        const mobileList = document.getElementById('mobileList');
+        allDays.forEach(({ day, fullDate, isCurrentMonth }) => {
+            if (!isCurrentMonth) return;
+            
+            const dayEvents = this.getEventsForDate(fullDate);
+            const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate);
+            
+            const listItem = document.createElement('div');
+            listItem.className = 'day-list-item';
+            
+            const today = new Date();
+            if (this.isSameDate(fullDate, today)) listItem.classList.add('today');
+            if (raceInfo) listItem.classList.add('race-day');
+            else if (isCarboLoading) listItem.classList.add('carb-loading');
+            else if (isPostRace) listItem.classList.add('post-race'); 
+
+            // Check for completed workouts
+            const hasCompletedWorkouts = dayEvents.some(e => e.isCompleted);
+            if (hasCompletedWorkouts) listItem.classList.add('completed-workout');
+
+            const nutrition = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, fullDate);
+            
+            listItem.innerHTML = `
+                <div class="day-list-header">
+                    <div class="day-list-date">${this.formatDateDisplay(fullDate)}</div>
+                    <div>
+                        ${raceInfo ? '🏁 Race' : isCarboLoading ? '🍝 Carb Load' : isPostRace ? '✅ Recovery' : ''}
+                        ${hasCompletedWorkouts ? '📊 Completed' : ''}
+                    </div>
+                </div>
+                <div class="day-list-workouts">
+                    ${dayEvents.map(e => `
+                        <div>
+                            <strong>${e.name}</strong> (${Math.round((e.moving_time||0)/60)} min)
+                            ${e.isCompleted ? '✅' : ''}
+                            ${e.completionData && e.completionData.perceivedEffort ? ` RPE: ${e.completionData.perceivedEffort}` : ''}
+                        </div>
+                    `).join('') || 'Rest Day'}
+                </div>
+                <div class="day-list-nutrition">
+                    <strong>${nutrition.calories}</strong> cal • <strong>${nutrition.carbs}g</strong> C • <strong>${nutrition.protein}g</strong> P
+                    ${nutrition.adjustmentApplied ? ' 📊 Adjusted' : ''}
+                </div>
+            `;
+            
+            listItem.addEventListener('click', () => this.showDayDetails(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace));
+            mobileList.appendChild(listItem);
+        });
+    },
+    
+    createDayElement(day, isOtherMonth, fullDate) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        if (isOtherMonth) dayElement.classList.add('other-month');
+
+        const today = new Date();
+        if (this.isSameDate(fullDate, today)) dayElement.classList.add('today');
+        
+        const dayEvents = this.getEventsForDate(fullDate);
+        const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate);
+        
+        // Check for completed workouts
+        const hasCompletedWorkouts = dayEvents.some(e => e.isCompleted);
+        const hasAdjustments = dayEvents.some(e => e.isCompleted && e.completionData);
+        
+        if (raceInfo) dayElement.classList.add('race-day');
+        else if (isCarboLoading) dayElement.classList.add('carb-loading');
+        else if (isPostRace) dayElement.classList.add('post-race'); 
+        
+        if (hasCompletedWorkouts) dayElement.classList.add('completed-workout');
+        
+        const nutritionInfo = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, fullDate);
+
+        dayElement.innerHTML = `
+            <div class="day-number">${day}</div>
+            <div class="day-content">
+                ${raceInfo ? `<div class="race-badge">${raceInfo.category.replace('RACE_', '')}</div>` : ''}
+                ${isCarboLoading ? `<div class="carb-loading-badge">CARB</div>` : ''}
+                ${isPostRace ? `<div class="post-race-badge">RECOVERY</div>` : ''}
+                ${hasAdjustments ? `<div class="adjustment-badge">📊</div>` : ''}
+                ${dayEvents.map(e => `
+                    <div class="workout-item ${e.isCompleted ? 'completed' : ''}">
+                        ${e.name}
+                        ${e.isCompleted ? ' ✅' : ''}
+                    </div>
+                `).join('')}
+            </div>
+            <div class="nutrition-info">
+                <strong>${nutritionInfo.calories}</strong> cal / <strong>${nutritionInfo.carbs}g</strong> C
+                ${nutritionInfo.adjustmentApplied ? ' 📊' : ''}
+            </div>
+        `;
+        
+        dayElement.addEventListener('click', () => this.showDayDetails(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace));
+        return dayElement;
+    },
+    
+    getEventsForDate(date) {
+        const dateStr = this.formatDate(date);
+        return this.events.filter(event => event.start_date_local.startsWith(dateStr));
+    },
+
+    analyzeDayType(date) {
+        const dayEvents = this.getEventsForDate(date);
+        let raceInfo = dayEvents.find(e => e.category?.startsWith('RACE_')) || null;
+        let isCarboLoading = false;
+        let isPostRace = false;
+
+        const yesterday = new Date(date);
+        yesterday.setDate(date.getDate() - 1);
+        if (this.getEventsForDate(yesterday).some(e => e.category?.startsWith('RACE_'))) {
+            isPostRace = true;
+            return { raceInfo: null, isCarboLoading: false, isPostRace: true };
+        }
+
+        if (raceInfo) {
+            return { raceInfo, isCarboLoading: false, isPostRace: false };
+        }
+
+        const upcomingRaces = this.findUpcomingRaces(date, 4); 
+        const importantRace = upcomingRaces.find(r => r.category === 'RACE_A' || r.category === 'RACE_B');
+        
+        if (importantRace) {
+            const raceDate = new Date(importantRace.start_date_local.split('T')[0] + 'T12:00:00');
+            const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
+            if (daysUntilRace >= 1 && daysUntilRace <= 3) {
+                isCarboLoading = true;
+            }
+        }
+        
+        return { raceInfo, isCarboLoading, isPostRace };
+    },
+    
+    calculateDaysUntilRace(fromDate, raceDate) {
+        const from = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+        const race = new Date(raceDate.getFullYear(), raceDate.getMonth(), raceDate.getDate());
+        return Math.round((race - from) / (1000 * 60 * 60 * 24));
+    },
+    
+    findUpcomingRaces(fromDate, daysAhead) {
+        const endDate = new Date(fromDate);
+        endDate.setDate(fromDate.getDate() + daysAhead);
+        return this.events.filter(event => {
+            if (!event.category?.startsWith('RACE_')) return false;
+            const eventDate = new Date(event.start_date_local.split('T')[0] + 'T12:00:00');
+            return eventDate > fromDate && eventDate <= endDate;
+        });
+    },
+
+    calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date) {
+        const totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
+        
+        let highestIntensity = 'none';
+        const intensityRanking = { 'none': 0, 'easy': 1, 'strength': 2, 'endurance': 3, 'tempo': 4, 'threshold': 5, 'intervals': 6 };
+        
+        dayEvents.forEach(event => {
+            const workoutType = this.workoutMapper.map(event);
+            if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
+                highestIntensity = workoutType;
+            }
+        });
+        
+        // Use enhanced calculation that considers completion data
+        return nutritionCalculator.calculateWithCompletionData(
+            this.bodyWeight, 
+            this.goals, 
+            highestIntensity, 
+            totalDuration,
+            date,
+            dayEvents
+        );
+    },
+    
+    showDayDetails(date, dayEvents, raceInfo, isCarboLoading, isPostRace) {
+        const modal = document.getElementById('dayDetailModal');
+        const modalDate = document.getElementById('modalDate');
+        const modalContent = document.getElementById('modalContent');
+        
+        modalDate.textContent = this.formatDateDisplay(date);
+        
+        const nutrition = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date);
+        
+        let headerText = '📅 Training Day';
+        if (raceInfo) headerText = `🏁 Race Day: ${raceInfo.name}`;
+        else if (isPostRace) headerText = '✅ Post-Race Recovery';
+        else if (isCarboLoading) headerText = '🍝 Carb Loading Day';
+        
+        let workoutDetailsHtml = '';
+        if (dayEvents.length > 0) {
+            workoutDetailsHtml = `
+                <h4>Scheduled Workouts:</h4>
+                <ul>
+                    ${dayEvents.map(e => {
+                        let workoutHtml = `<li><strong>${e.name || e.type}</strong> - ${Math.round((e.moving_time || e.duration || 3600) / 60)} minutes`;
+                        
+                        if (e.isCompleted && e.completionData) {
+                            const completion = e.completionData;
+                            workoutHtml += ` ✅`;
+                            if (completion.perceivedEffort) {
+                                workoutHtml += ` (RPE: ${completion.perceivedEffort})`;
+                            }
+                            if (completion.avgHeartRate) {
+                                workoutHtml += ` (Avg HR: ${completion.avgHeartRate})`;
+                            }
+                            if (completion.actualDuration !== Math.round((e.moving_time || e.duration || 3600) / 60)) {
+                                workoutHtml += ` (Actual: ${completion.actualDuration} min)`;
+                            }
+                        }
+                        
+                        workoutHtml += `</li>`;
+                        return workoutHtml;
+                    }).join('')}
+                </ul>
+            `;
+        }
+        
+        modalContent.innerHTML = `
+            <div class="section">
+                <h3>${headerText}</h3>
+                ${workoutDetailsHtml}
+                ${nutritionCalculator.formatNutritionResults(nutrition)}
+            </div>
+        `;
+        
+        modal.style.display = 'block';
+    },
+
+    closeModal() {
+        document.getElementById('dayDetailModal').style.display = 'none';
+    },
+    
+    handleModalClick(event) {
+        if (event.target === event.currentTarget) this.closeModal();
+    },
+    
+    previousMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+        this.loadCalendarData(); // Reload to get completion data for new date range
+    },
+    
+    nextMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+        this.loadCalendarData(); // Reload to get completion data for new date range
+    },
+    
+    goToToday() {
+        this.currentDate = new Date();
+        this.loadCalendarData(); // Reload to get completion data for current month
+    },
+    
+    updateMonthYear() {
+        document.getElementById('monthYear').textContent = `${this.currentDate.toLocaleDateString('en-US', { month: 'long' })} ${this.currentDate.getFullYear()}`;
+    },
+    
+    formatDate(date) {
+        return date.toISOString().split('T')[0];
+    },
+    
+    formatDateDisplay(date) {
+        return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    },
+    
+    isSameDate(date1, date2) {
+        return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
+    }
 };
