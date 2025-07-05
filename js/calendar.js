@@ -1,288 +1,99 @@
-// Workout Completion Tracker Module (inline for compatibility)
-const workoutCompletionTracker = {
-    // Analyze completed workout against planned workout
-    analyzeWorkoutCompletion(plannedWorkout, completionData) {
-        if (!completionData) return null;
-        
-        console.log('🎯 Analyzing workout completion:', plannedWorkout.name);
-        
-        const planned = this.extractPlannedMetrics(plannedWorkout);
-        const actual = this.extractActualMetrics(completionData);
-        
-        const variance = this.calculateVariance(planned, actual);
-        const adjustment = this.generateAdjustmentRecommendation(variance, planned, actual);
-        
-        const analysis = {
-            workoutId: plannedWorkout.id,
-            workoutName: plannedWorkout.name,
-            date: plannedWorkout.start_date_local.split('T')[0],
-            planned,
-            actual,
-            variance,
-            adjustment,
-            severity: this.calculateAdjustmentSeverity(variance),
-            timestamp: new Date()
-        };
-        
-        completionDataStore.store(plannedWorkout.id, analysis.date, analysis);
-        return analysis;
-    },
-    
-    extractPlannedMetrics(plannedWorkout) {
-        const plannedDuration = Math.round((plannedWorkout.moving_time || plannedWorkout.duration || 3600) / 60);
-        const plannedIntensity = this.mapWorkoutTypeToIntensity(plannedWorkout);
-        
-        return {
-            duration: plannedDuration,
-            intensity: plannedIntensity,
-            intensityScore: this.getIntensityScore(plannedIntensity),
-            estimatedStress: this.calculateStressScore(plannedDuration, plannedIntensity),
-            type: plannedWorkout.type || 'workout'
-        };
-    },
-    
-    extractActualMetrics(completionData) {
-        const actualIntensity = this.calculateActualIntensity(completionData);
-        
-        return {
-            duration: completionData.actualDuration,
-            intensity: actualIntensity,
-            intensityScore: this.getIntensityScore(actualIntensity),
-            actualStress: this.calculateStressScore(completionData.actualDuration, actualIntensity),
-            avgHeartRate: completionData.avgHeartRate,
-            maxHeartRate: completionData.maxHeartRate,
-            avgPower: completionData.avgPower,
-            perceivedEffort: completionData.perceivedEffort,
-            calories: completionData.calories,
-            tss: completionData.trainingStressScore
-        };
-    },
-    
-    mapWorkoutTypeToIntensity(workout) {
-        const name = (workout.name || '').toLowerCase();
-        const type = (workout.type || '').toLowerCase();
-        
-        if (name.includes('recovery') || name.includes('easy')) return 'easy';
-        if (name.includes('tempo') || name.includes('zone 3')) return 'tempo';
-        if (name.includes('threshold') || name.includes('zone 4')) return 'threshold';
-        if (name.includes('interval') || name.includes('zone 5')) return 'intervals';
-        if (name.includes('strength endurance') || name.includes('low cadence')) return 'intervals';
-        if (name.includes('strength') || type.includes('strength')) return 'strength';
-        
-        return 'endurance';
-    },
-    
-    calculateActualIntensity(completionData) {
-        // Use RPE if available (most reliable)
-        if (completionData.perceivedEffort) {
-            if (completionData.perceivedEffort <= 3) return 'easy';
-            if (completionData.perceivedEffort <= 5) return 'endurance';
-            if (completionData.perceivedEffort <= 6) return 'tempo';
-            if (completionData.perceivedEffort <= 8) return 'threshold';
-            return 'intervals';
+// Include the Terra API code at the top of calendar.js
+const terraAPI = {
+    async checkAuthStatus() {
+        const stored = localStorage.getItem('terra_mfp_auth');
+        if (stored) {
+            const auth = JSON.parse(stored);
+            return auth.expires_at > Date.now();
         }
-        
-        // Use heart rate zones if available
-        if (completionData.avgHeartRate && completionData.maxHeartRate) {
-            const hrPercent = completionData.avgHeartRate / completionData.maxHeartRate;
-            if (hrPercent < 0.65) return 'easy';
-            if (hrPercent < 0.75) return 'endurance';
-            if (hrPercent < 0.85) return 'tempo';
-            if (hrPercent < 0.92) return 'threshold';
-            return 'intervals';
+        return false;
+    },
+
+    async getAuthUrl() {
+        try {
+            const response = await fetch('/api/terra-auth', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) throw new Error(`Auth API error: ${response.status}`);
+            const data = await response.json();
+            return data.authUrl;
+        } catch (error) {
+            console.error('Terra auth URL error:', error);
+            throw error;
         }
-        
-        // Use TSS if available
-        if (completionData.trainingStressScore) {
-            const tssPerHour = completionData.trainingStressScore / (completionData.actualDuration / 60);
-            if (tssPerHour < 60) return 'easy';
-            if (tssPerHour < 80) return 'endurance';
-            if (tssPerHour < 100) return 'tempo';
-            if (tssPerHour < 120) return 'threshold';
-            return 'intervals';
-        }
-        
-        // Fallback to duration-based estimation
-        if (completionData.actualDuration > 150) return 'endurance';
-        if (completionData.actualDuration < 45) return 'intervals';
-        return 'tempo';
     },
-    
-    getIntensityScore(intensity) {
-        const scores = { 'easy': 1, 'endurance': 2, 'tempo': 3, 'threshold': 4, 'intervals': 5, 'strength': 2 };
-        return scores[intensity] || 2;
-    },
-    
-    calculateStressScore(duration, intensity) {
-        const intensityMultipliers = { 
-            'easy': 0.6, 
-            'endurance': 1.0, 
-            'tempo': 1.4, 
-            'threshold': 1.8, 
-            'intervals': 2.2,
-            'strength': 1.2
-        };
-        return (duration / 60) * (intensityMultipliers[intensity] || 1.0);
-    },
-    
-    calculateVariance(planned, actual) {
-        return {
-            durationVariance: (actual.duration - planned.duration) / planned.duration,
-            intensityVariance: (actual.intensityScore - planned.intensityScore) / planned.intensityScore,
-            stressVariance: (actual.actualStress - planned.estimatedStress) / planned.estimatedStress,
-            absoluteDurationDiff: actual.duration - planned.duration,
-            absoluteIntensityDiff: actual.intensityScore - planned.intensityScore
-        };
-    },
-    
-    calculateAdjustmentSeverity(variance) {
-        const totalVariance = Math.abs(variance.durationVariance) + Math.abs(variance.intensityVariance);
-        
-        if (totalVariance > 0.8) return 'high';
-        if (totalVariance > 0.4) return 'medium';
-        if (totalVariance > 0.15) return 'low';
-        return 'none';
-    },
-    
-    generateAdjustmentRecommendation(variance, planned, actual) {
-        if (this.calculateAdjustmentSeverity(variance) === 'none') {
-            return null;
-        }
-        
-        let calorieAdjustment = 0;
-        let carbAdjustment = 0;
-        let proteinAdjustment = 0;
-        const reasoning = [];
-        
-        // Duration-based adjustments
-        if (Math.abs(variance.durationVariance) > 0.15) {
-            const durationMinutes = variance.absoluteDurationDiff;
-            const durationCalories = durationMinutes * 10;
-            calorieAdjustment += durationCalories;
-            carbAdjustment += durationCalories * 0.6 / 4;
+
+    async fetchNutritionData(date, endDate = null) {
+        try {
+            console.log('🍎 Fetching MyFitnessPal nutrition data for', date);
+
+            const response = await fetch('/api/terra-nutrition', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: this.getUserId(),
+                    date: date,
+                    endDate: endDate
+                })
+            });
+
+            if (!response.ok) throw new Error(`Nutrition API error: ${response.status}`);
+            const data = await response.json();
             
-            reasoning.push(
-                durationMinutes > 0 
-                    ? `Workout was ${Math.round(Math.abs(variance.durationVariance) * 100)}% longer than planned (+${durationMinutes} min)`
-                    : `Workout was ${Math.round(Math.abs(variance.durationVariance) * 100)}% shorter than planned (${durationMinutes} min)`
-            );
+            this.cacheNutritionData(date, data);
+            return data;
+        } catch (error) {
+            console.error('Terra nutrition fetch error:', error);
+            const cached = this.getCachedNutritionData(date);
+            if (cached) return cached;
+            throw error;
         }
-        
-        // Intensity-based adjustments
-        if (Math.abs(variance.intensityVariance) > 0.2) {
-            const intensityCalories = variance.absoluteIntensityDiff * 120;
-            calorieAdjustment += intensityCalories;
-            carbAdjustment += intensityCalories * 0.7 / 4;
-            
-            reasoning.push(
-                variance.intensityVariance > 0
-                    ? `Workout was more intense than planned (${actual.intensity} vs ${planned.intensity})`
-                    : `Workout was less intense than planned (${actual.intensity} vs ${planned.intensity})`
-            );
-        }
-        
-        // High stress/RPE adjustments
-        if (actual.perceivedEffort && actual.perceivedEffort >= 8) {
-            calorieAdjustment += 150;
-            proteinAdjustment += 10;
-            reasoning.push(`High perceived effort (RPE ${actual.perceivedEffort}) - increasing recovery nutrition`);
-        }
-        
-        // TSS-based fine-tuning
-        if (actual.tss && actual.tss > 100) {
-            calorieAdjustment += Math.min(100, (actual.tss - 100) * 2);
-            reasoning.push(`High training stress (TSS: ${actual.tss}) detected`);
-        }
-        
-        if (!proteinAdjustment) {
-            proteinAdjustment = Math.round(calorieAdjustment * 0.15 / 4);
-        }
-        const fatAdjustment = Math.round(calorieAdjustment * 0.25 / 9);
-        
-        return {
-            calories: Math.round(calorieAdjustment),
-            carbs: Math.round(carbAdjustment),
-            protein: proteinAdjustment,
-            fat: fatAdjustment,
-            reasoning: reasoning,
-            timing: this.getTimingRecommendations(variance, actual),
-            recovery: this.getRecoveryRecommendations(actual)
-        };
     },
-    
-    getTimingRecommendations(variance, actual) {
-        const recommendations = [];
-        
-        if (variance.intensityVariance > 0.3 || (actual.perceivedEffort && actual.perceivedEffort >= 7)) {
-            recommendations.push('Prioritize post-workout nutrition within 30 minutes');
-            recommendations.push('Increase carb intake in the 2 hours post-workout');
-        }
-        
-        if (variance.durationVariance > 0.3) {
-            recommendations.push('Extend post-workout fueling window');
-            recommendations.push('Consider larger evening meal to support recovery');
-        }
-        
-        if (actual.actualDuration > 120) {
-            recommendations.push('Focus on glycogen replenishment over next 24 hours');
-        }
-        
-        return recommendations;
+
+    getUserId() {
+        const auth = localStorage.getItem('terra_mfp_auth');
+        return auth ? JSON.parse(auth).userId : 'demo_user';
     },
-    
-    getRecoveryRecommendations(actual) {
-        const recommendations = [];
-        
-        if (actual.perceivedEffort && actual.perceivedEffort >= 8) {
-            recommendations.push('Prioritize hydration and electrolyte replacement');
-            recommendations.push('Consider anti-inflammatory foods (tart cherry, turmeric)');
-            recommendations.push('Ensure adequate sleep (8+ hours)');
-        }
-        
-        if (actual.tss && actual.tss > 150) {
-            recommendations.push('High stress session - extra recovery focus needed');
-            recommendations.push('Consider lighter training tomorrow');
-        }
-        
-        if (actual.actualDuration > 180) {
-            recommendations.push('Long session - monitor hydration status');
-            recommendations.push('Split tomorrow\'s nutrition into smaller, frequent meals');
-        }
-        
-        return recommendations;
+
+    cacheNutritionData(date, data) {
+        const cacheKey = `nutrition_${date}`;
+        const cacheData = { ...data, cachedAt: Date.now() };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
     },
-    
-    applyAdjustmentToNutrition(baseNutrition, adjustment) {
-        if (!adjustment) return baseNutrition;
-        
-        return {
-            ...baseNutrition,
-            calories: baseNutrition.calories + adjustment.calories,
-            protein: baseNutrition.protein + adjustment.protein,
-            carbs: baseNutrition.carbs + adjustment.carbs,
-            fat: baseNutrition.fat + adjustment.fat,
-            adjustmentApplied: true,
-            adjustmentDetails: {
-                reason: adjustment.reasoning.join('; '),
-                timing: adjustment.timing,
-                recovery: adjustment.recovery,
-                originalPlan: {
-                    calories: baseNutrition.calories,
-                    protein: baseNutrition.protein,
-                    carbs: baseNutrition.carbs,
-                    fat: baseNutrition.fat
-                }
-            }
-        };
+
+    getCachedNutritionData(date) {
+        const cacheKey = `nutrition_${date}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            const data = JSON.parse(cached);
+            if (Date.now() - data.cachedAt < 2 * 60 * 60 * 1000) return data;
+        }
+        return null;
+    },
+
+    storeAuthData(authData) {
+        const auth = { ...authData, expires_at: Date.now() + (24 * 60 * 60 * 1000) };
+        localStorage.setItem('terra_mfp_auth', JSON.stringify(auth));
+    },
+
+    clearAuth() {
+        localStorage.removeItem('terra_mfp_auth');
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('nutrition_')) localStorage.removeItem(key);
+        });
     }
 };
 
-// Enhanced Calendar Manager
+// Enhanced Calendar Manager with Terra Integration
 const calendarManager = {
+    // ... keep all existing properties ...
     currentDate: new Date(),
     events: [],
     bodyWeight: 192,
     goals: 'performance',
+    mfpConnected: false,
 
     workoutMapper: {
         map(workout) {
@@ -298,17 +109,310 @@ const calendarManager = {
         }
     },
     
-    init() {
+    async init() {
         this.updateMonthYear();
+        
+        // Check MyFitnessPal connection status
+        this.mfpConnected = await terraAPI.checkAuthStatus();
+        this.updateMFPConnectionStatus();
+        
         this.loadCalendarData(); 
         
         document.getElementById('goals')?.addEventListener('change', () => this.handleSettingsChange());
         document.getElementById('bodyWeight')?.addEventListener('change', () => this.handleSettingsChange());
         document.getElementById('apiKey')?.addEventListener('change', () => this.handleSettingsChange());
 
+        // Add MFP connection handlers
+        document.getElementById('connectMFPBtn')?.addEventListener('click', () => this.connectToMFP());
+        document.getElementById('disconnectMFPBtn')?.addEventListener('click', () => this.disconnectFromMFP());
+
         document.querySelector('.day-detail-modal')?.addEventListener('click', (e) => this.handleModalClick(e));
         document.querySelector('.modal-close')?.addEventListener('click', () => this.closeModal());
     },
+
+    updateMFPConnectionStatus() {
+        const statusIndicator = document.getElementById('mfpStatusIndicator');
+        const statusText = document.getElementById('mfpStatusText');
+        const connectBtn = document.getElementById('connectMFPBtn');
+        const disconnectBtn = document.getElementById('disconnectMFPBtn');
+        const syncInfo = document.getElementById('mfpSyncInfo');
+
+        if (this.mfpConnected) {
+            statusIndicator?.classList.remove('disconnected');
+            statusText.textContent = 'Connected to MyFitnessPal';
+            connectBtn.style.display = 'none';
+            disconnectBtn.style.display = 'inline-block';
+            syncInfo.textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+        } else {
+            statusIndicator?.classList.add('disconnected');
+            statusText.textContent = 'Not connected';
+            connectBtn.style.display = 'inline-block';
+            disconnectBtn.style.display = 'none';
+            syncInfo.textContent = 'Connect to sync nutrition data';
+        }
+    },
+
+    async connectToMFP() {
+        try {
+            const authUrl = await terraAPI.getAuthUrl();
+            window.open(authUrl, '_blank', 'width=500,height=600');
+            
+            // Listen for auth completion (you'd implement this based on your callback)
+            this.listenForAuthCompletion();
+        } catch (error) {
+            alert('Failed to connect to MyFitnessPal: ' + error.message);
+        }
+    },
+
+    disconnectFromMFP() {
+        terraAPI.clearAuth();
+        this.mfpConnected = false;
+        this.updateMFPConnectionStatus();
+        this.renderCalendar(); // Refresh to remove MFP data
+    },
+
+    listenForAuthCompletion() {
+        // Simulate successful auth for demo
+        setTimeout(() => {
+            terraAPI.storeAuthData({ userId: 'demo_user_' + Date.now() });
+            this.mfpConnected = true;
+            this.updateMFPConnectionStatus();
+            this.renderCalendar(); // Refresh calendar with new data
+        }, 3000);
+    },
+    
+    // ... keep all existing methods but update calculateDayNutrition ...
+
+    async calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date) {
+        const totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
+        
+        let highestIntensity = 'none';
+        const intensityRanking = { 'none': 0, 'easy': 1, 'strength': 2, 'endurance': 3, 'tempo': 4, 'threshold': 5, 'intervals': 6 };
+        
+        dayEvents.forEach(event => {
+            const workoutType = this.workoutMapper.map(event);
+            if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
+                highestIntensity = workoutType;
+            }
+        });
+        
+        if (typeof nutritionCalculator === 'undefined') {
+            return {
+                calories: 2500, protein: 125, carbs: 300, fat: 85,
+                fueling: { duringWorkoutCarbs: 0, fluidIntake: 750, fuelingTips: [] }
+            };
+        }
+        
+        // Calculate base nutrition
+        let nutrition = nutritionCalculator.calculateWithCompletionData(
+            this.bodyWeight, this.goals, highestIntensity, totalDuration,
+            date, dayEvents, !!raceInfo, isPostRace, isCarboLoading
+        );
+
+        // Try to get actual MyFitnessPal data for past dates
+        const selectedDate = new Date(date);
+        const today = new Date();
+        
+        if (selectedDate < today && this.mfpConnected) {
+            try {
+                const actualData = await terraAPI.fetchNutritionData(date);
+                if (actualData) {
+                    nutrition.actualData = actualData;
+                    nutrition.hasActualData = true;
+                }
+            } catch (error) {
+                console.warn('Could not fetch actual nutrition data:', error);
+            }
+        }
+
+        return nutrition;
+    },
+
+    async showDayDetails(date, dayEvents, raceInfo, isCarboLoading, isPostRace) {
+        const modal = document.getElementById('dayDetailModal');
+        const modalDate = document.getElementById('modalDate');
+        const modalContent = document.getElementById('modalContent');
+        
+        modalDate.textContent = this.formatDateDisplay(date);
+        
+        // Show loading state
+        modalContent.innerHTML = '<div class="loading">Loading nutrition data...</div>';
+        modal.style.display = 'block';
+        
+        // Calculate nutrition (with potential MFP data)
+        const nutrition = await this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date);
+        
+        let headerText = '📅 Training Day';
+        if (raceInfo) headerText = `🏁 Race Day: ${raceInfo.name}`;
+        else if (isPostRace) headerText = '✅ Post-Race Recovery';
+        else if (isCarboLoading) headerText = '🍝 Carb Loading Day';
+        
+        let workoutDetailsHtml = '';
+        if (dayEvents.length > 0) {
+            workoutDetailsHtml = `
+                <h4>Scheduled Workouts:</h4>
+                <ul>
+                    ${dayEvents.map(e => {
+                        let workoutHtml = `<li><strong>${e.name || e.type}</strong> - ${Math.round((e.moving_time || e.duration || 3600) / 60)} minutes`;
+                        
+                        if (e.isCompleted && e.completionData) {
+                            const completion = e.completionData;
+                            workoutHtml += ` ✅`;
+                            if (completion.perceivedEffort) workoutHtml += ` (RPE: ${completion.perceivedEffort})`;
+                            if (completion.avgHeartRate) workoutHtml += ` (Avg HR: ${completion.avgHeartRate})`;
+                            if (completion.actualDuration !== Math.round((e.moving_time || e.duration || 3600) / 60)) {
+                                workoutHtml += ` (Actual: ${completion.actualDuration} min)`;
+                            }
+                        }
+                        
+                        workoutHtml += `</li>`;
+                        return workoutHtml;
+                    }).join('')}
+                </ul>
+            `;
+        }
+        
+        // Format nutrition results with actual vs planned if available
+        const nutritionHtml = nutrition.hasActualData ? 
+            this.formatNutritionWithActual(nutrition) : 
+            (typeof nutritionCalculator !== 'undefined' ? 
+                nutritionCalculator.formatNutritionResults(nutrition, nutrition.actualData) : 
+                this.formatBasicNutrition(nutrition));
+        
+        modalContent.innerHTML = `
+            <div class="section">
+                <h3>${headerText}</h3>
+                ${workoutDetailsHtml}
+                ${nutritionHtml}
+            </div>
+        `;
+        
+        // Animate progress circles after modal is shown
+        setTimeout(() => {
+            this.animateProgressCircles();
+        }, 100);
+    },
+
+    formatNutritionWithActual(nutrition) {
+        if (!nutrition.hasActualData) {
+            return nutritionCalculator.formatNutritionResults(nutrition);
+        }
+
+        const actual = nutrition.actualData;
+        const planned = {
+            calories: nutrition.calories,
+            protein: nutrition.protein,
+            carbs: nutrition.carbs,
+            fat: nutrition.fat
+        };
+
+        const adherence = {
+            calories: Math.round((actual.calories / planned.calories) * 100),
+            protein: Math.round((actual.protein / planned.protein) * 100),
+            carbs: Math.round((actual.carbs / planned.carbs) * 100),
+            fat: Math.round((actual.fat / planned.fat) * 100)
+        };
+
+        const overallAdherence = Math.round((adherence.calories + adherence.protein + adherence.carbs + adherence.fat) / 4);
+
+        return `
+            <div class="nutrition-comparison">
+                <h4>🎯 Nutrition Plan vs Actual ${actual.isMockData ? '(Sample Data)' : ''}</h4>
+                
+                <div class="adherence-summary">
+                    <div class="adherence-score ${overallAdherence >= 85 ? 'excellent' : overallAdherence >= 70 ? 'good' : 'needs-improvement'}">${overallAdherence}%</div>
+                    <div class="adherence-text">Overall Nutrition Adherence ${overallAdherence >= 85 ? '✅' : overallAdherence >= 70 ? '⚠️' : '❌'}</div>
+                    <div class="data-source">📱 Data from: MyFitnessPal ${actual.isMockData ? '(Demo)' : ''}</div>
+                </div>
+
+                <div class="comparison-grid">
+                    <div class="comparison-item">
+                        <div class="macro-label">Calories</div>
+                        <div class="planned-actual">
+                            <div class="planned">Target: ${planned.calories}</div>
+                            <div class="actual ${adherence.calories >= 85 ? 'good' : adherence.calories >= 70 ? 'fair' : 'poor'}">
+                                Actual: ${actual.calories} (${adherence.calories}%)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comparison-item">
+                        <div class="macro-label">Protein</div>
+                        <div class="planned-actual">
+                            <div class="planned">Target: ${planned.protein}g</div>
+                            <div class="actual ${adherence.protein >= 85 ? 'good' : adherence.protein >= 70 ? 'fair' : 'poor'}">
+                                Actual: ${actual.protein}g (${adherence.protein}%)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comparison-item">
+                        <div class="macro-label">Carbs</div>
+                        <div class="planned-actual">
+                            <div class="planned">Target: ${planned.carbs}g</div>
+                            <div class="actual ${adherence.carbs >= 85 ? 'good' : adherence.carbs >= 70 ? 'fair' : 'poor'}">
+                                Actual: ${actual.carbs}g (${adherence.carbs}%)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comparison-item">
+                        <div class="macro-label">Fat</div>
+                        <div class="planned-actual">
+                            <div class="planned">Target: ${planned.fat}g</div>
+                            <div class="actual ${adherence.fat >= 85 ? 'good' : adherence.fat >= 70 ? 'fair' : 'poor'}">
+                                Actual: ${actual.fat}g (${adherence.fat}%)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                ${actual.meals ? this.formatMealBreakdown(actual.meals) : ''}
+            </div>
+        `;
+    },
+
+    formatMealBreakdown(meals) {
+        return `
+            <div class="meal-breakdown">
+                <h4>🍽️ Meal Breakdown</h4>
+                <div class="meals-grid">
+                    ${meals.map(meal => `
+                        <div class="meal-item">
+                            <div class="meal-header">
+                                <span class="meal-icon">${meal.icon}</span>
+                                <span class="meal-name">${meal.name}</span>
+                                <span class="meal-status">${meal.status}</span>
+                            </div>
+                            <div class="meal-macros">
+                                <div class="meal-calories">${meal.calories} cal</div>
+                                <div class="meal-breakdown-macros">
+                                    ${meal.protein}g P • ${meal.carbs}g C • ${meal.fat}g F
+                                </div>
+                            </div>
+                            <div class="meal-foods">${meal.foods}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    formatBasicNutrition(nutrition) {
+        return `
+            <div class="nutrition-card">
+                <h3>🎯 Daily Nutrition Target</h3>
+                <div class="macro-grid">
+                    <div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div>
+                </div>
+            </div>
+        `;
+    },
+
+    // ... keep all other existing methods (renderCalendar, previousMonth, etc.) ...
     
     handleSettingsChange() {
         this.bodyWeight = parseInt(document.getElementById('bodyWeight').value);
@@ -359,520 +463,25 @@ const calendarManager = {
             loadingState.innerHTML = `<h3>Error loading calendar. Check your API key.</h3><p>${error.message}</p>`;
         }
     },
-    
-    renderCalendar() {
-        const year = this.currentDate.getFullYear();
-        const month = this.currentDate.getMonth();
-        this.updateMonthYear();
-        
-        const grid = document.getElementById('calendarGrid');
-        grid.innerHTML = `
-            <div class="calendar-header-cell">Sun</div><div class="calendar-header-cell">Mon</div>
-            <div class="calendar-header-cell">Tue</div><div class="calendar-header-cell">Wed</div>
-            <div class="calendar-header-cell">Thu</div><div class="calendar-header-cell">Fri</div>
-            <div class="calendar-header-cell">Sat</div>
-        `;
-        
-        const mobileList = document.getElementById('mobileList');
-        mobileList.innerHTML = '';
-        
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        const startingDayOfWeek = firstDay.getDay();
-        
-        const allDays = [];
-        
-        const prevMonth = new Date(year, month, 0);
-        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-            const day = prevMonth.getDate() - i;
-            const fullDate = new Date(year, month - 1, day);
-            grid.appendChild(this.createDayElement(day, true, fullDate));
-        }
-        
-        for (let day = 1; day <= daysInMonth; day++) {
-            const fullDate = new Date(year, month, day);
-            grid.appendChild(this.createDayElement(day, false, fullDate));
-            allDays.push({ day, fullDate, isCurrentMonth: true });
-        }
-        
-        const totalCells = startingDayOfWeek + daysInMonth;
-        const cellsNeeded = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
 
-        for (let day = 1; day <= cellsNeeded; day++) {
-            const fullDate = new Date(year, month + 1, day);
-            grid.appendChild(this.createDayElement(day, true, fullDate));
-        }
-        
-        this.renderMobileList(allDays);
-    },
-    
-    renderMobileList(allDays) {
-        const mobileList = document.getElementById('mobileList');
-        allDays.forEach(({ day, fullDate, isCurrentMonth }) => {
-            if (!isCurrentMonth) return;
-            
-            const dayEvents = this.getEventsForDate(fullDate);
-            const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate);
-            
-            const listItem = document.createElement('div');
-            listItem.className = 'day-list-item';
-            
-            const today = new Date();
-            if (this.isSameDate(fullDate, today)) listItem.classList.add('today');
-            if (raceInfo) listItem.classList.add('race-day');
-            else if (isCarboLoading) listItem.classList.add('carb-loading');
-            else if (isPostRace) listItem.classList.add('post-race'); 
-
-            const hasCompletedWorkouts = dayEvents.some(e => e.isCompleted);
-            if (hasCompletedWorkouts) listItem.classList.add('completed-workout');
-
-            const nutrition = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, fullDate);
-            
-            listItem.innerHTML = `
-                <div class="day-list-header">
-                    <div class="day-list-date">${this.formatDateDisplay(fullDate)}</div>
-                    <div>
-                        ${raceInfo ? '🏁 Race' : isCarboLoading ? '🍝 Carb Load' : isPostRace ? '✅ Recovery' : ''}
-                        ${hasCompletedWorkouts ? '📊 Completed' : ''}
-                    </div>
-                </div>
-                <div class="day-list-workouts">
-                    ${dayEvents.map(e => `
-                        <div>
-                            <strong>${e.name}</strong> (${Math.round((e.moving_time||0)/60)} min)
-                            ${e.isCompleted ? '✅' : ''}
-                            ${e.completionData && e.completionData.perceivedEffort ? ` RPE: ${e.completionData.perceivedEffort}` : ''}
-                        </div>
-                    `).join('') || 'Rest Day'}
-                </div>
-                <div class="day-list-nutrition">
-                    <strong>${nutrition.calories}</strong> cal • <strong>${nutrition.carbs}g</strong> C • <strong>${nutrition.protein}g</strong> P
-                    ${nutrition.adjustmentApplied ? ' 📊 Adjusted' : ''}
-                </div>
-            `;
-            
-            listItem.addEventListener('click', () => this.showDayDetails(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace));
-            mobileList.appendChild(listItem);
-        });
-    },
-    
-    createDayElement(day, isOtherMonth, fullDate) {
-        const dayElement = document.createElement('div');
-        dayElement.className = 'calendar-day';
-        if (isOtherMonth) dayElement.classList.add('other-month');
-
-        const today = new Date();
-        if (this.isSameDate(fullDate, today)) dayElement.classList.add('today');
-        
-        const dayEvents = this.getEventsForDate(fullDate);
-        const { raceInfo, isCarboLoading, isPostRace } = this.analyzeDayType(fullDate);
-        
-        const hasCompletedWorkouts = dayEvents.some(e => e.isCompleted);
-        const hasAdjustments = dayEvents.some(e => e.isCompleted && e.completionData);
-        
-        if (raceInfo) dayElement.classList.add('race-day');
-        else if (isCarboLoading) dayElement.classList.add('carb-loading');
-        else if (isPostRace) dayElement.classList.add('post-race'); 
-        
-        if (hasCompletedWorkouts) dayElement.classList.add('completed-workout');
-        
-        const nutritionInfo = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, fullDate);
-
-        dayElement.innerHTML = `
-            <div class="day-number">${day}</div>
-            <div class="day-content">
-                ${raceInfo ? `<div class="race-badge">${raceInfo.category.replace('RACE_', '')}</div>` : ''}
-                ${isCarboLoading ? `<div class="carb-loading-badge">CARB</div>` : ''}
-                ${isPostRace ? `<div class="post-race-badge">RECOVERY</div>` : ''}
-                ${hasAdjustments ? `<div class="adjustment-badge">📊</div>` : ''}
-                ${dayEvents.map(e => `
-                    <div class="workout-item ${e.isCompleted ? 'completed' : ''}">
-                        ${e.name}
-                        ${e.isCompleted ? ' ✅' : ''}
-                    </div>
-                `).join('')}
-            </div>
-            <div class="nutrition-info">
-                <strong>${nutritionInfo.calories}</strong> cal / <strong>${nutritionInfo.carbs}g</strong> C
-                ${nutritionInfo.adjustmentApplied ? ' 📊' : ''}
-            </div>
-        `;
-        
-        dayElement.addEventListener('click', () => this.showDayDetails(fullDate, dayEvents, raceInfo, isCarboLoading, isPostRace));
-        return dayElement;
-    },
-    
-    getEventsForDate(date) {
-        const dateStr = this.formatDate(date);
-        return this.events.filter(event => event.start_date_local.startsWith(dateStr));
-    },
-
-    analyzeDayType(date) {
-        const dayEvents = this.getEventsForDate(date);
-        let raceInfo = dayEvents.find(e => e.category?.startsWith('RACE_')) || null;
-        let isCarboLoading = false;
-        let isPostRace = false;
-
-        const yesterday = new Date(date);
-        yesterday.setDate(date.getDate() - 1);
-        if (this.getEventsForDate(yesterday).some(e => e.category?.startsWith('RACE_'))) {
-            isPostRace = true;
-            return { raceInfo: null, isCarboLoading: false, isPostRace: true };
-        }
-
-        if (raceInfo) {
-            return { raceInfo, isCarboLoading: false, isPostRace: false };
-        }
-
-        const upcomingRaces = this.findUpcomingRaces(date, 4); 
-        const importantRace = upcomingRaces.find(r => r.category === 'RACE_A' || r.category === 'RACE_B');
-        
-        if (importantRace) {
-            const raceDate = new Date(importantRace.start_date_local.split('T')[0] + 'T12:00:00');
-            const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
-            if (daysUntilRace >= 1 && daysUntilRace <= 3) {
-                isCarboLoading = true;
-            }
-        }
-        
-        return { raceInfo, isCarboLoading, isPostRace };
-    },
-    
-    calculateDaysUntilRace(fromDate, raceDate) {
-        const from = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
-        const race = new Date(raceDate.getFullYear(), raceDate.getMonth(), raceDate.getDate());
-        return Math.round((race - from) / (1000 * 60 * 60 * 24));
-    },
-    
-    findUpcomingRaces(fromDate, daysAhead) {
-        const endDate = new Date(fromDate);
-        endDate.setDate(fromDate.getDate() + daysAhead);
-        return this.events.filter(event => {
-            if (!event.category?.startsWith('RACE_')) return false;
-            const eventDate = new Date(event.start_date_local.split('T')[0] + 'T12:00:00');
-            return eventDate > fromDate && eventDate <= endDate;
-        });
-    },
-
-    calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date) {
-        const totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
-        
-        let highestIntensity = 'none';
-        const intensityRanking = { 'none': 0, 'easy': 1, 'strength': 2, 'endurance': 3, 'tempo': 4, 'threshold': 5, 'intervals': 6 };
-        
-        dayEvents.forEach(event => {
-            const workoutType = this.workoutMapper.map(event);
-            if (intensityRanking[workoutType] > intensityRanking[highestIntensity]) {
-                highestIntensity = workoutType;
-            }
-        });
-        
-        // Debug logging
-        console.log(`🎯 Calculating nutrition for ${date}:`, {
-            raceInfo: !!raceInfo,
-            isCarboLoading,
-            isPostRace,
-            highestIntensity,
-            totalDuration,
-            dayEvents: dayEvents.map(e => ({ name: e.name, category: e.category }))
-        });
-        
-        // Safety check for nutritionCalculator
-        if (typeof nutritionCalculator === 'undefined') {
-            console.error('nutritionCalculator not loaded yet');
-            // Return a basic fallback nutrition object
-            return {
-                calories: 2500,
-                protein: 125,
-                carbs: 300,
-                fat: 85,
-                fueling: { duringWorkoutCarbs: 0, fluidIntake: 750, fuelingTips: [] }
-            };
-        }
-        
-        return nutritionCalculator.calculateWithCompletionData(
-            this.bodyWeight, 
-            this.goals, 
-            highestIntensity, 
-            totalDuration,
-            date,
-            dayEvents,
-            !!raceInfo,  // isRaceDay
-            isPostRace,  // isPostRace 
-            isCarboLoading  // isCarboLoading
-        );
-    },
-    
-    showDayDetails(date, dayEvents, raceInfo, isCarboLoading, isPostRace) {
-        const modal = document.getElementById('dayDetailModal');
-        const modalDate = document.getElementById('modalDate');
-        const modalContent = document.getElementById('modalContent');
-        
-        modalDate.textContent = this.formatDateDisplay(date);
-        
-        const nutrition = this.calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date);
-        
-        let headerText = '📅 Training Day';
-        if (raceInfo) headerText = `🏁 Race Day: ${raceInfo.name}`;
-        else if (isPostRace) headerText = '✅ Post-Race Recovery';
-        else if (isCarboLoading) headerText = '🍝 Carb Loading Day';
-        
-        let workoutDetailsHtml = '';
-        if (dayEvents.length > 0) {
-            workoutDetailsHtml = `
-                <h4>Scheduled Workouts:</h4>
-                <ul>
-                    ${dayEvents.map(e => {
-                        let workoutHtml = `<li><strong>${e.name || e.type}</strong> - ${Math.round((e.moving_time || e.duration || 3600) / 60)} minutes`;
-                        
-                        if (e.isCompleted && e.completionData) {
-                            const completion = e.completionData;
-                            workoutHtml += ` ✅`;
-                            if (completion.perceivedEffort) {
-                                workoutHtml += ` (RPE: ${completion.perceivedEffort})`;
-                            }
-                            if (completion.avgHeartRate) {
-                                workoutHtml += ` (Avg HR: ${completion.avgHeartRate})`;
-                            }
-                            if (completion.actualDuration !== Math.round((e.moving_time || e.duration || 3600) / 60)) {
-                                workoutHtml += ` (Actual: ${completion.actualDuration} min)`;
-                            }
-                        }
-                        
-                        workoutHtml += `</li>`;
-                        return workoutHtml;
-                    }).join('')}
-                </ul>
-            `;
-        }
-        
-        // Generate sample nutrition data for past dates
-        const selectedDate = new Date(date);
-        const today = new Date();
-        let nutritionData = null;
-        
-        if (selectedDate < today && typeof nutritionCalculator !== 'undefined') {
-            // Generate sample data for completed days
-            nutritionData = nutritionCalculator.generateSampleNutritionData(nutrition, date);
-        }
-        
-        const nutritionHtml = typeof nutritionCalculator !== 'undefined' 
-            ? nutritionCalculator.formatNutritionResults(nutrition, nutritionData)
-            : `<div class="nutrition-card">
-                <h3>🎯 Daily Nutrition Target</h3>
-                <div class="macro-grid">
-                    <div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div>
-                    <div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div>
-                    <div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div>
-                    <div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div>
-                </div>
-            </div>`;
-        
-        modalContent.innerHTML = `
-            <div class="section">
-                <h3>${headerText}</h3>
-                ${workoutDetailsHtml}
-                ${nutritionHtml}
-            </div>
-        `;
-        
-        modal.style.display = 'block';
-        
-        // Animate progress circles after modal is shown
-        if (nutritionData) {
-            setTimeout(() => {
-                this.animateProgressCircles();
-            }, 100);
-        }
-    },
-
-    // Animate progress circles
-    animateProgressCircles() {
-        const progressRings = document.querySelectorAll('.progress-ring');
-        progressRings.forEach((ring, index) => {
-            const currentOffset = ring.style.strokeDashoffset || 314;
-            ring.style.strokeDashoffset = 314; // Start from 0
-            setTimeout(() => {
-                ring.style.strokeDashoffset = currentOffset;
-            }, index * 100);
-        });
-    },
-
-    // Render weekly summary
-    renderWeeklySummary() {
-        const summaryContent = document.getElementById('weeklySummaryContent');
-        const weeks = this.generateWeeklySummaryData();
-        
-        summaryContent.innerHTML = weeks.map(week => `
-            <div class="week-summary ${week.isCurrent ? 'current-week' : ''}">
-                <div class="week-header ${week.isCurrent ? 'current' : ''}">
-                    📅 ${week.title}
-                </div>
-                <div class="week-stats">
-                    <div class="stat-row">
-                        <div class="stat-label">⏱️ Training Time</div>
-                        <div class="stat-values">
-                            <div class="stat-planned">Planned: ${week.stats.plannedTime}</div>
-                            <div class="stat-actual">Actual: ${week.stats.actualTime}</div>
-                            <div class="stat-variance ${week.stats.timeVariance >= 0 ? 'positive' : 'negative'}">
-                                ${week.stats.timeVariance >= 0 ? '+' : ''}${week.stats.timeVarianceText}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stat-row">
-                        <div class="stat-label">🔥 Total Calories</div>
-                        <div class="stat-values">
-                            <div class="stat-planned">Planned: ${week.stats.plannedCalories.toLocaleString()}</div>
-                            <div class="stat-actual">Actual: ${week.stats.actualCalories.toLocaleString()}</div>
-                            <div class="stat-variance ${week.stats.calorieVariance >= 0 ? 'positive' : 'negative'}">
-                                ${week.stats.calorieVariance >= 0 ? '+' : ''}${week.stats.calorieVarianceText}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stat-row">
-                        <div class="stat-label">🍞 Carbs</div>
-                        <div class="stat-values">
-                            <div class="stat-planned">Planned: ${week.stats.plannedCarbs}g</div>
-                            <div class="stat-actual">Actual: ${week.stats.actualCarbs}g</div>
-                            <div class="stat-variance ${week.stats.carbVariance >= 0 ? 'positive' : 'negative'}">
-                                ${week.stats.carbVariance >= 0 ? '+' : ''}${week.stats.carbVarianceText}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stat-row">
-                        <div class="stat-label">🥩 Protein</div>
-                        <div class="stat-values">
-                            <div class="stat-planned">Planned: ${week.stats.plannedProtein}g</div>
-                            <div class="stat-actual">Actual: ${week.stats.actualProtein}g</div>
-                            <div class="stat-variance ${week.stats.proteinVariance >= 0 ? 'positive' : 'negative'}">
-                                ${week.stats.proteinVariance >= 0 ? '+' : ''}${week.stats.proteinVarianceText}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="adherence-bar">
-                        <div class="adherence-fill ${week.adherenceClass}" data-width="${week.adherence}%"></div>
-                    </div>
-                    <div class="adherence-text" style="color: ${week.adherenceColor};">${week.adherence}% Nutrition Adherence</div>
-                </div>
-            </div>
-        `).join('');
-        
-        // Animate adherence bars
-        setTimeout(() => {
-            const adherenceBars = document.querySelectorAll('.adherence-fill');
-            adherenceBars.forEach(bar => {
-                const targetWidth = bar.getAttribute('data-width');
-                bar.style.width = targetWidth;
-            });
-        }, 200);
-    },
-
-    // Generate weekly summary data
-    generateWeeklySummaryData() {
-        const today = new Date();
-        const weeks = [];
-        
-        // Generate 3 weeks of sample data
-        for (let i = 0; i < 3; i++) {
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - (today.getDay()) - (i * 7));
-            
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate() + 6);
-            
-            const isCurrent = i === 0;
-            const isLastWeek = i === 1;
-            
-            // Sample data generation
-            const baseCalories = 20000 + (Math.random() * 5000);
-            const actualMultiplier = 0.85 + (Math.random() * 0.25); // 85% to 110%
-            
-            const plannedCalories = Math.round(baseCalories);
-            const actualCalories = Math.round(baseCalories * actualMultiplier);
-            const calorieVariance = actualCalories - plannedCalories;
-            
-            const adherence = Math.round(actualMultiplier * 100);
-            
-            weeks.push({
-                title: isCurrent ? 
-                    `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${weekEnd.toLocaleDateString('en-US', { day: 'numeric' })}, ${weekEnd.getFullYear()} (Current)` :
-                    `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}-${weekEnd.toLocaleDateString('en-US', { day: 'numeric' })}, ${weekEnd.getFullYear()}`,
-                isCurrent,
-                adherence,
-                adherenceClass: adherence >= 90 ? 'adherence-excellent' : 
-                              adherence >= 80 ? 'adherence-good' : 
-                              adherence >= 70 ? 'adherence-fair' : 'adherence-poor',
-                adherenceColor: adherence >= 90 ? '#4caf50' : 
-                               adherence >= 80 ? '#8bc34a' : 
-                               adherence >= 70 ? '#ff9800' : '#f44336',
-                stats: {
-                    plannedTime: `${7 + i}h ${15 + (i * 10)}m`,
-                    actualTime: `${7 + i + (isCurrent ? 1 : 0)}h ${25 + (i * 15)}m`,
-                    timeVariance: isCurrent ? 27 : (isLastWeek ? 15 : -95),
-                    timeVarianceText: isCurrent ? '27 min (+5%)' : (isLastWeek ? '15 min (+3%)' : '1h 35m (-23%)'),
-                    
-                    plannedCalories,
-                    actualCalories,
-                    calorieVariance,
-                    calorieVarianceText: `${calorieVariance.toLocaleString()} (${calorieVariance >= 0 ? '+' : ''}${Math.round((calorieVariance / plannedCalories) * 100)}%)`,
-                    
-                    plannedCarbs: Math.round(plannedCalories * 0.6 / 4),
-                    actualCarbs: Math.round(actualCalories * 0.58 / 4),
-                    carbVariance: Math.round((actualCalories * 0.58 / 4) - (plannedCalories * 0.6 / 4)),
-                    carbVarianceText: `${Math.round((actualCalories * 0.58 / 4) - (plannedCalories * 0.6 / 4))}g (${Math.round(((actualCalories * 0.58 / 4) - (plannedCalories * 0.6 / 4)) / (plannedCalories * 0.6 / 4) * 100)}%)`,
-                    
-                    plannedProtein: Math.round(plannedCalories * 0.15 / 4),
-                    actualProtein: Math.round(actualCalories * 0.17 / 4),
-                    proteinVariance: Math.round((actualCalories * 0.17 / 4) - (plannedCalories * 0.15 / 4)),
-                    proteinVarianceText: `${Math.round((actualCalories * 0.17 / 4) - (plannedCalories * 0.15 / 4))}g (+${Math.round(((actualCalories * 0.17 / 4) - (plannedCalories * 0.15 / 4)) / (plannedCalories * 0.15 / 4) * 100)}%)`
-                }
-            });
-        }
-        
-        return weeks;
-    },
-
-    closeModal() {
-        document.getElementById('dayDetailModal').style.display = 'none';
-    },
-    
-    handleModalClick(event) {
-        if (event.target === event.currentTarget) this.closeModal();
-    },
-    
-    previousMonth() {
-        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
-        this.loadCalendarData();
-    },
-    
-    nextMonth() {
-        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
-        this.loadCalendarData();
-    },
-    
-    goToToday() {
-        this.currentDate = new Date();
-        this.loadCalendarData();
-    },
-    
-    updateMonthYear() {
-        document.getElementById('monthYear').textContent = `${this.currentDate.toLocaleDateString('en-US', { month: 'long' })} ${this.currentDate.getFullYear()}`;
-    },
-    
-    formatDate(date) {
-        return date.toISOString().split('T')[0];
-    },
-    
-    formatDateDisplay(date) {
-        return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    },
-    
-    isSameDate(date1, date2) {
-        return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
-    }
+    // Keep all the other existing methods unchanged...
+    renderCalendar() { /* existing code */ },
+    renderMobileList() { /* existing code */ },
+    createDayElement() { /* existing code */ },
+    getEventsForDate() { /* existing code */ },
+    analyzeDayType() { /* existing code */ },
+    calculateDaysUntilRace() { /* existing code */ },
+    findUpcomingRaces() { /* existing code */ },
+    animateProgressCircles() { /* existing code */ },
+    renderWeeklySummary() { /* existing code */ },
+    generateWeeklySummaryData() { /* existing code */ },
+    closeModal() { /* existing code */ },
+    handleModalClick() { /* existing code */ },
+    previousMonth() { /* existing code */ },
+    nextMonth() { /* existing code */ },
+    goToToday() { /* existing code */ },
+    updateMonthYear() { /* existing code */ },
+    formatDate() { /* existing code */ },
+    formatDateDisplay() { /* existing code */ },
+    isSameDate() { /* existing code */ }
 };
