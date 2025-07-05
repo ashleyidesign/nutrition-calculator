@@ -104,35 +104,39 @@ const nutritionCalculator = {
         } else if (isCarboLoading) {
             p_mult = 1.7; f_mult = 1.0; c_mult = 8.2;
         } else {
-            // This is a regular training or rest day - use FUELIN baseline (~2250 calories for maintenance)
+            // This is a regular training or rest day - use FUELIN baseline
+            // For 192lb (87kg) athlete: Target ~2250 calories (150p/90f/210c)
             switch (workoutType) {
                 case 'none':
+                    // Rest day baseline - matches Fuelin exactly
+                    p_mult = 1.72; f_mult = 1.03; c_mult = 2.41; // 150p/90f/210c = 2250 cal
+                    break;
                 case 'easy':
-                    // Rest/Easy day baseline (matches Fuelin's ~2250 cal target for 192lb athlete)
-                    p_mult = 1.8; f_mult = 1.0; c_mult = 2.5; 
+                    // Easy recovery workout
+                    p_mult = 1.72; f_mult = 1.03; c_mult = 2.6;
                     break;
                 case 'endurance':
                     // Long endurance workout (Z1-Z2)
-                    p_mult = 1.8; f_mult = 1.1; c_mult = 4.5 + (duration > 120 ? 1.0 : 0);
+                    p_mult = 1.72; f_mult = 1.1; c_mult = 3.5 + (duration > 120 ? 0.8 : 0);
                     break;
                 case 'tempo':
                     // Tempo workout (Z3) - moderate carbs
-                    p_mult = 1.75; f_mult = 1.0; c_mult = 5.5;
+                    p_mult = 1.72; f_mult = 1.0; c_mult = 4.2;
                     break;
                 case 'threshold':
                     // Threshold workout (Z4) - higher carbs
-                    p_mult = 1.7; f_mult = 1.0; c_mult = 6.2;
+                    p_mult = 1.72; f_mult = 1.0; c_mult = 4.8;
                     break;
                 case 'intervals':
                     // High intensity intervals (Z5+) - highest carbs
-                    p_mult = 1.7; f_mult = 1.0; c_mult = 6.8;
+                    p_mult = 1.72; f_mult = 1.0; c_mult = 5.4;
                     break;
                 case 'strength':
                     // Strength training - higher protein, moderate carbs
-                    p_mult = 1.9; f_mult = 1.1; c_mult = 4.0;
+                    p_mult = 1.9; f_mult = 1.1; c_mult = 3.2;
                     break;
                 default:
-                    p_mult = 1.7; f_mult = 1.0; c_mult = 2.5;
+                    p_mult = 1.72; f_mult = 1.03; c_mult = 2.41;
             }
         }
         
@@ -146,16 +150,16 @@ const nutritionCalculator = {
                         // Target ~2000 calories for rest days during weight loss
                         p_mult = 1.72; f_mult = 0.92; c_mult = 1.95;
                     } else {
-                        // Reduce from baseline for workout days
-                        f_mult = Math.max(0.8, f_mult - 0.2);
-                        c_mult = Math.max(2.0, c_mult - 1.0);
+                        // Reduce carbs/fat for workout days
+                        f_mult = Math.max(0.8, f_mult - 0.15);
+                        c_mult = Math.max(2.0, c_mult - 0.8);
                     }
                     break;
                 
                 case 'performance':
-                    // Add surplus for performance focus
-                    p_mult += 0.2;
-                    c_mult += 1.5;
+                    // Add modest surplus for performance focus
+                    c_mult += 1.0; // Add carbs primarily
+                    p_mult += 0.1; // Small protein increase
                     break;
 
                 case 'maintenance':
