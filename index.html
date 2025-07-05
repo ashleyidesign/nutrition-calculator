@@ -100,10 +100,20 @@
     <script src="js/nutrition.js"></script>
     <script src="js/calendar.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🗓️ Enhanced Nutrition Calendar with Completion Tracking Initialized');
-            calendarManager.init();
-        });
+        // Ensure all scripts are loaded before initializing
+        function initializeApp() {
+            if (typeof nutritionCalculator !== 'undefined' && 
+                typeof calendarManager !== 'undefined' && 
+                typeof intervalsAPI !== 'undefined') {
+                console.log('🗓️ Enhanced Nutrition Calendar with Completion Tracking Initialized');
+                calendarManager.init();
+            } else {
+                console.log('Waiting for scripts to load...');
+                setTimeout(initializeApp, 100);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 </body>
 </html>
