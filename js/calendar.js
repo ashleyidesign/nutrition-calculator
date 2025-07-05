@@ -578,6 +578,19 @@ const calendarManager = {
             dayEvents: dayEvents.map(e => ({ name: e.name, category: e.category }))
         });
         
+        // Safety check for nutritionCalculator
+        if (typeof nutritionCalculator === 'undefined') {
+            console.error('nutritionCalculator not loaded yet');
+            // Return a basic fallback nutrition object
+            return {
+                calories: 2500,
+                protein: 125,
+                carbs: 300,
+                fat: 85,
+                fueling: { duringWorkoutCarbs: 0, fluidIntake: 750, fuelingTips: [] }
+            };
+        }
+        
         return nutritionCalculator.calculateWithCompletionData(
             this.bodyWeight, 
             this.goals, 
@@ -639,16 +652,28 @@ const calendarManager = {
         const today = new Date();
         let nutritionData = null;
         
-        if (selectedDate < today) {
+        if (selectedDate < today && typeof nutritionCalculator !== 'undefined') {
             // Generate sample data for completed days
             nutritionData = nutritionCalculator.generateSampleNutritionData(nutrition, date);
         }
+        
+        const nutritionHtml = typeof nutritionCalculator !== 'undefined' 
+            ? nutritionCalculator.formatNutritionResults(nutrition, nutritionData)
+            : `<div class="nutrition-card">
+                <h3>🎯 Daily Nutrition Target</h3>
+                <div class="macro-grid">
+                    <div class="macro-item"><div class="macro-value">${nutrition.calories}</div><div class="macro-label">Calories</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.protein}g</div><div class="macro-label">Protein</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.carbs}g</div><div class="macro-label">Carbs</div></div>
+                    <div class="macro-item"><div class="macro-value">${nutrition.fat}g</div><div class="macro-label">Fat</div></div>
+                </div>
+            </div>`;
         
         modalContent.innerHTML = `
             <div class="section">
                 <h3>${headerText}</h3>
                 ${workoutDetailsHtml}
-                ${nutritionCalculator.formatNutritionResults(nutrition, nutritionData)}
+                ${nutritionHtml}
             </div>
         `;
         
