@@ -57,12 +57,12 @@ const nutritionCalculator = {
         return nutrition;
     },
 
-    // Research-based macro calculation with periodization logic
+    // Research-based macro calculation with consistent weight loss periodization
     calculateResearchBasedMacros(bodyWeightKg, workoutType, duration, isRaceDay, isPostRace, isCarboLoading, goals, tomorrowWorkouts, powerData) {
         let protein, fat, carbs;
         let dayType = 'regular';
         
-        // Determine day classification based on research
+        // Step 1: Determine day classification
         if (isRaceDay) {
             dayType = 'race';
         } else if (isPostRace) {
@@ -73,61 +73,123 @@ const nutritionCalculator = {
             // Check if tomorrow has hard workouts (forward-looking periodization)
             const tomorrowIntensity = this.assessTomorrowIntensity(tomorrowWorkouts);
             if (tomorrowIntensity === 'high') {
-                dayType = 'priming'; // Day before hard workout
+                dayType = 'priming';
             }
         }
 
-        // Base protein - research suggests 1.4-2.2g/kg for athletes
-        const baseProtein = Math.round(bodyWeightKg * 1.72); // 150g for 87kg athlete
-
-        // Calculate based on day type and research principles
-        switch (dayType) {
-            case 'race':
-                // Race day: Ultra-high carbs (8-10g/kg), moderate protein, low fat
-                protein = baseProtein;
-                fat = Math.round(bodyWeightKg * 0.8); // ~70g
-                carbs = this.calculateRaceCarbs(bodyWeightKg, duration, powerData);
-                break;
-
-            case 'carbLoading':
-                // Carb loading: 8-12g/kg carbs for glycogen supercompensation
-                protein = baseProtein;
-                fat = Math.round(bodyWeightKg * 0.8); // Keep fat low to make room for carbs
-                carbs = Math.round(bodyWeightKg * 8.5); // ~740g for 87kg athlete
-                break;
-
-            case 'recovery':
-                // Post-race recovery: High carbs + higher protein for tissue repair
-                protein = Math.round(baseProtein * 1.15); // Increased for recovery
-                fat = Math.round(bodyWeightKg * 1.0);
-                carbs = Math.round(bodyWeightKg * 5.5); // High for glycogen replenishment
-                break;
-
-            case 'priming':
-                // Day before hard workout: Ensure glycogen is topped off
-                protein = baseProtein;
-                fat = Math.round(bodyWeightKg * 0.9);
-                carbs = this.calculatePrimingCarbs(bodyWeightKg, tomorrowWorkouts);
-                break;
-
-            default:
-                // Regular training day: Scale with today's workout intensity
-                protein = baseProtein;
-                const macros = this.calculateTrainingDayMacros(bodyWeightKg, workoutType, duration, powerData);
-                fat = macros.fat;
-                carbs = macros.carbs;
+        // Step 2: Base protein consistent across all days (research-based)
+        if (goals === 'weight-loss') {
+            protein = 188; // Fixed research-based protein for weight loss (2.16g/kg for 87kg)
+        } else {
+            protein = 150; // Standard protein for maintenance/performance
         }
 
-        // Apply goal-based modifications (weight loss periodization)
+        // Step 3: Calculate based on day type
+        if (dayType === 'race') {
+            // Race day: Ultra-high carbs, moderate fat
+            fat = Math.round(bodyWeightKg * 0.8); // ~70g
+            carbs = this.calculateRaceCarbs(bodyWeightKg, duration, powerData);
+            
+        } else if (dayType === 'carbLoading') {
+            // Carb loading: High carbs, low fat
+            fat = Math.round(bodyWeightKg * 0.8); // ~70g
+            carbs = Math.round(bodyWeightKg * 8.5); // ~740g
+            
+        } else if (dayType === 'recovery') {
+            // Post-race recovery: High carbs + moderate fat
+            fat = Math.round(bodyWeightKg * 1.0); // ~87g
+            carbs = Math.round(bodyWeightKg * 5.5); // ~479g
+            
+        } else if (dayType === 'priming') {
+            // Day before hard workout: Higher carbs than normal
+            const baseMacros = this.getBaseTrainingMacros(bodyWeightKg, workoutType, duration, powerData);
+            fat = baseMacros.fat;
+            carbs = Math.round(baseMacros.carbs * 1.2); // 20% more carbs for tomorrow
+            
+        } else {
+            // Regular training day: Base on workout intensity
+            const baseMacros = this.getBaseTrainingMacros(bodyWeightKg, workoutType, duration, powerData);
+            fat = baseMacros.fat;
+            carbs = baseMacros.carbs;
+        }
+
+        // Step 4: Apply weight loss adjustments ONLY to regular training days
         if (goals === 'weight-loss' && dayType === 'regular') {
-            const adjustments = this.applyWeightLossAdjustments(workoutType, duration, protein, fat, carbs);
-            protein = adjustments.protein;
-            fat = adjustments.fat;
-            carbs = adjustments.carbs;
-        } else if (goals === 'performance' && dayType === 'regular') {
-            // Performance goal: modest surplus on training days
-            carbs = Math.round(carbs * 1.1);
-            fat = Math.round(fat * 1.05);
+            const adjustedMacros = this.applyWeightLossDeficit(workoutType, duration, protein, fat, carbs);
+            return adjustedMacros;
+        }
+
+        return { protein, fat, carbs };
+    },
+
+    // Get base training macros (before weight loss adjustments)
+    getBaseTrainingMacros(bodyWeightKg, workoutType, duration, powerData) {
+        // Use power data if available
+        if (powerData && powerData.estimatedKJ) {
+            const carbsFromKJ = this.calculateCarbsFromKilojoules(powerData.estimatedKJ);
+            const carbs = Math.max(carbsFromKJ, Math.round(bodyWeightKg * 3.0));
+            const fat = Math.round(bodyWeightKg * 1.1);
+            return { fat, carbs };
+        }
+
+        // Workout type-based macros (maintenance baseline)
+        switch (workoutType) {
+            case 'none':
+                return { fat: 110, carbs: 235 }; // Rest day baseline
+            case 'easy':
+                return { fat: Math.round(bodyWeightKg * 1.25), carbs: Math.round(bodyWeightKg * 4.2) };
+            case 'endurance':
+                const enduranceCarbs = Math.round(bodyWeightKg * (5.0 + (duration > 120 ? 1.5 : 0)));
+                return { fat: Math.round(bodyWeightKg * 1.15), carbs: enduranceCarbs };
+            case 'tempo':
+                return { fat: Math.round(bodyWeightKg * 1.1), carbs: Math.round(bodyWeightKg * 5.7) };
+            case 'threshold':
+                return { fat: Math.round(bodyWeightKg * 1.05), carbs: Math.round(bodyWeightKg * 6.3) };
+            case 'intervals':
+                return { fat: Math.round(bodyWeightKg * 1.0), carbs: Math.round(bodyWeightKg * 7.0) };
+            case 'strength':
+                return { fat: Math.round(bodyWeightKg * 1.15), carbs: Math.round(bodyWeightKg * 4.7) };
+            default:
+                return { fat: 110, carbs: 235 };
+        }
+    },
+
+    // Apply weight loss deficit with research-based periodization
+    applyWeightLossDeficit(workoutType, duration, protein, fat, carbs) {
+        let targetCalories;
+        
+        // Research-based weight loss periodization
+        if (workoutType === 'none' || workoutType === 'easy') {
+            // Rest/Easy days: Larger deficit - target 2000 calories
+            targetCalories = 2000;
+        } else if (['intervals', 'threshold', 'tempo'].includes(workoutType)) {
+            // Hard workout days: Smaller deficit - target 2200-2400 calories
+            targetCalories = duration > 90 ? 2400 : 2200;
+        } else {
+            // Endurance days: Moderate deficit - scaled by duration
+            if (duration > 150) {
+                targetCalories = 2500; // Long endurance needs more fuel
+            } else if (duration > 90) {
+                targetCalories = 2300;
+            } else {
+                targetCalories = 2100;
+            }
+        }
+
+        // Calculate current calories
+        const currentCalories = (protein * 4) + (carbs * 4) + (fat * 9);
+        const deficit = currentCalories - targetCalories;
+
+        if (deficit > 0) {
+            // Need to reduce calories - prioritize carbs then fat
+            const carbReduction = Math.min(Math.round(deficit * 0.7 / 4), Math.round(carbs * 0.4));
+            const fatReduction = Math.min(Math.round((deficit - carbReduction * 4) / 9), Math.round(fat * 0.3));
+            
+            return {
+                protein: protein,
+                carbs: Math.max(carbs - carbReduction, Math.round(carbs * 0.5)),
+                fat: Math.max(fat - fatReduction, Math.round(fat * 0.6))
+            };
         }
 
         return { protein, fat, carbs };
@@ -223,36 +285,6 @@ const nutritionCalculator = {
         const replacementRate = 0.45; // 45% replacement as per research
         const carbCalories = estimatedKJ * replacementRate;
         return Math.round(carbCalories / 4); // Convert to grams (4 cal/g)
-    },
-
-    // Apply weight loss adjustments using research-based periodization
-    applyWeightLossAdjustments(workoutType, duration, protein, fat, carbs) {
-        // Research: Higher protein during caloric deficit (2.3-3.1g/kg FFM)
-        const adjustedProtein = Math.round(protein * 1.25); // Increase protein significantly
-        
-        // Create research-based deficit: adjusted to hit 2000 cal target
-        let deficitFromCarbs = 0;
-        let deficitFromFat = 0;
-        
-        if (workoutType === 'none' || workoutType === 'easy') {
-            // Larger deficit on rest/easy days - tuned to hit exactly 2000 cal
-            deficitFromCarbs = Math.round(carbs * 0.40); // 40% carb reduction (was 38%)
-            deficitFromFat = Math.round(fat * 0.30); // 30% fat reduction (was 28%)
-        } else if (['intervals', 'threshold', 'tempo'].includes(workoutType)) {
-            // Smaller deficit on hard days to maintain performance
-            deficitFromCarbs = Math.round(carbs * 0.2); // 20% carb reduction
-            deficitFromFat = Math.round(fat * 0.15); // 15% fat reduction
-        } else {
-            // Moderate deficit on endurance days
-            deficitFromCarbs = Math.round(carbs * 0.28); // 28% carb reduction
-            deficitFromFat = Math.round(fat * 0.2); // 20% fat reduction
-        }
-
-        return {
-            protein: adjustedProtein,
-            fat: Math.max(fat - deficitFromFat, Math.round(fat * 0.6)), // Don't go too low
-            carbs: Math.max(carbs - deficitFromCarbs, Math.round(carbs * 0.5)) // Don't go too low
-        };
     },
 
     // Assess tomorrow's workout intensity for forward-looking periodization
