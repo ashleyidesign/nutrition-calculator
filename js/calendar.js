@@ -503,32 +503,57 @@ const calendarManager = {
         let workoutDetailsHtml = '';
         if (dayEvents.length > 0) {
             workoutDetailsHtml = `
-                <h4>Today's Workouts:</h4>
-                <ul>
-                    ${dayEvents.map(e => {
-                        let workoutHtml = `<li>${this.getWorkoutIcon(e)} <strong>${e.name || e.type}</strong> - ${Math.round((e.moving_time || e.duration || 3600) / 60)} minutes`;
-                        
-                        if (e.isCompleted && e.completionData) {
-                            const completion = e.completionData;
-                            workoutHtml += ` ✅`;
-                            if (completion.perceivedEffort) {
-                                workoutHtml += ` (RPE: ${completion.perceivedEffort})`;
+                <div class="workouts-section">
+                    <h4>Today's Activities</h4>
+                    <div class="workout-cards">
+                        ${dayEvents.map(e => {
+                            const duration = Math.round((e.moving_time || e.duration || 3600) / 60);
+                            const workoutIcon = this.getWorkoutIcon(e);
+                            
+                            let completionHtml = '';
+                            if (e.isCompleted && e.completionData) {
+                                const c = e.completionData;
+                                completionHtml = `
+                                    <div class="completion-data">
+                                        <div class="completion-header">
+                                            <span class="completed-badge">✅ Completed</span>
+                                            <span class="actual-duration">${c.actualDuration} min</span>
+                                        </div>
+                                        <div class="workout-metrics">
+                                            ${c.avgHeartRate ? `<div class="metric"><span class="metric-label">Avg HR</span><span class="metric-value">${c.avgHeartRate} bpm</span></div>` : ''}
+                                            ${c.maxHeartRate ? `<div class="metric"><span class="metric-label">Max HR</span><span class="metric-value">${c.maxHeartRate} bpm</span></div>` : ''}
+                                            ${c.avgPower ? `<div class="metric"><span class="metric-label">Avg Power</span><span class="metric-value">${c.avgPower}W</span></div>` : ''}
+                                            ${c.maxPower ? `<div class="metric"><span class="metric-label">Max Power</span><span class="metric-value">${c.maxPower}W</span></div>` : ''}
+                                            ${c.distance ? `<div class="metric"><span class="metric-label">Distance</span><span class="metric-value">${(c.distance / 1000).toFixed(1)} km</span></div>` : ''}
+                                            ${c.elevationGain ? `<div class="metric"><span class="metric-label">Elevation</span><span class="metric-value">${Math.round(c.elevationGain)}m</span></div>` : ''}
+                                            ${c.avgSpeed ? `<div class="metric"><span class="metric-label">Avg Speed</span><span class="metric-value">${(c.avgSpeed * 3.6).toFixed(1)} km/h</span></div>` : ''}
+                                            ${c.calories ? `<div class="metric"><span class="metric-label">Calories</span><span class="metric-value">${c.calories} kcal</span></div>` : ''}
+                                            ${c.perceivedEffort ? `<div class="metric"><span class="metric-label">RPE</span><span class="metric-value">${c.perceivedEffort}/10</span></div>` : ''}
+                                        </div>
+                                        ${c.description ? `<div class="workout-description">${c.description}</div>` : ''}
+                                    </div>
+                                `;
+                            } else if (e.isCompleted) {
+                                completionHtml = `<div class="completion-simple">✅ Completed (${duration} min)</div>`;
+                            } else {
+                                completionHtml = `<div class="planned-workout">📅 Planned (${duration} min)</div>`;
                             }
-                            if (completion.avgHeartRate) {
-                                workoutHtml += ` (Avg HR: ${completion.avgHeartRate})`;
-                            }
-                            if (completion.avgPower) {
-                                workoutHtml += ` (Avg Power: ${completion.avgPower}W)`;
-                            }
-                            if (completion.actualDuration !== Math.round((e.moving_time || e.duration || 3600) / 60)) {
-                                workoutHtml += ` (Actual: ${completion.actualDuration} min)`;
-                            }
-                        }
-                        
-                        workoutHtml += `</li>`;
-                        return workoutHtml;
-                    }).join('')}
-                </ul>
+                            
+                            return `
+                                <div class="workout-card ${e.isCompleted ? 'completed' : 'planned'}">
+                                    <div class="workout-header">
+                                        <div class="workout-title">
+                                            <span class="workout-icon">${workoutIcon}</span>
+                                            <span class="workout-name">${e.name || e.type}</span>
+                                        </div>
+                                        <div class="workout-type">${e.type}</div>
+                                    </div>
+                                    ${completionHtml}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
             `;
         }
 
@@ -537,20 +562,33 @@ const calendarManager = {
         if (tomorrowWorkouts && tomorrowWorkouts.length > 0) {
             const tomorrowIntensity = this.assessTomorrowIntensity(tomorrowWorkouts);
             tomorrowDetailsHtml = `
-                <h4>Tomorrow's Workouts (${tomorrowIntensity} intensity):</h4>
-                <ul>
-                    ${tomorrowWorkouts.map(w => `
-                        <li>${this.getWorkoutIcon(w)} <strong>${w.name || w.type}</strong> - ${Math.round((w.moving_time || w.duration || 3600) / 60)} minutes</li>
-                    `).join('')}
-                </ul>
+                <div class="tomorrow-section">
+                    <h4>Tomorrow's Plan <span class="intensity-badge ${tomorrowIntensity}">${tomorrowIntensity} intensity</span></h4>
+                    <div class="tomorrow-workouts">
+                        ${tomorrowWorkouts.map(w => `
+                            <div class="tomorrow-workout">
+                                <span class="workout-icon">${this.getWorkoutIcon(w)}</span>
+                                <span class="workout-name">${w.name || w.type}</span>
+                                <span class="workout-duration">${Math.round((w.moving_time || w.duration || 3600) / 60)} min</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
             `;
         }
         
         modalContent.innerHTML = `
-            <div class="section">
+            <div class="modal-day-header">
                 <h3>${headerText}</h3>
-                ${workoutDetailsHtml}
-                ${tomorrowDetailsHtml}
+                <div class="day-meta">
+                    ${this.formatDateDisplay(date)} ${tomorrowWorkouts?.length > 0 ? `• Tomorrow: ${this.assessTomorrowIntensity(tomorrowWorkouts)} intensity` : ''}
+                </div>
+            </div>
+
+            ${workoutDetailsHtml}
+            ${tomorrowDetailsHtml}
+            
+            <div class="nutrition-section">
                 ${nutritionCalculator.formatNutritionResults(nutrition)}
             </div>
         `;
