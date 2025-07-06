@@ -143,11 +143,19 @@ const intervalsAPI = {
         });
     },
 
-    // IMPROVED: Better completion detection with more signals
+    // IMPROVED: Better completion detection with source awareness
     isEventCompleted(event, isPastDate) {
-        // Key indicators that this is a completed activity:
+        // If this came from the activities endpoint, it's definitely completed
+        if (event.source === 'completed') {
+            return true;
+        }
         
-        // 1. Has actual performance metrics (strong indicator)
+        // If this came from the events endpoint, it's planned (even if it has some metrics)
+        if (event.source === 'planned') {
+            return false;
+        }
+        
+        // Fallback to old logic for events without source marking
         const hasActualMetrics = !!(
             event.moving_time ||
             event.distance ||
@@ -159,16 +167,7 @@ const intervalsAPI = {
             event.total_elevation_gain
         );
         
-        // 2. Has activity ID (necessary but not sufficient)
         const hasActivityId = !!event.id;
-        
-        // 3. Has specific completed activity fields
-        const hasCompletedFields = !!(
-            event.start_date_local ||  // Activities have precise start times
-            event.elapsed_time ||      // Elapsed time vs moving time
-            event.device_name ||       // Device used for recording
-            event.external_id          // External platform ID
-        );
         
         // If it's a future date, it's definitely planned
         if (!isPastDate) {
