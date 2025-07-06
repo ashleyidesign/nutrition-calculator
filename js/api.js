@@ -53,6 +53,13 @@ const intervalsAPI = {
         const data = await response.json();
         console.log('API range response:', data);
         
+        // DEBUG: Check specifically for today's date
+        const today = new Date().toISOString().split('T')[0];
+        const todaysEvents = (data.events || []).filter(event => 
+            event.start_date_local.startsWith(today)
+        );
+        console.log(`🎯 DEBUGGING: Found ${todaysEvents.length} events for today (${today}):`, todaysEvents);
+        
         // Process all events in the range
         const processedEvents = [];
         (data.events || []).forEach(event => {
@@ -95,8 +102,26 @@ const intervalsAPI = {
                 detectionReason: this.getDetectionReason(event, isPastDate, isCompleted)
             };
             
-            // Add completion data if it's a completed activity
-            if (isCompleted && event.id) {
+            // For completed activities, add completion data directly if we have the metrics
+            if (isCompleted && hasActualMetrics) {
+                processedEvent.completionData = {
+                    id: event.id,
+                    actualDuration: Math.round((event.moving_time || event.elapsed_time || 0) / 60),
+                    avgHeartRate: event.average_heartrate || null,
+                    maxHeartRate: event.max_heartrate || null,
+                    avgPower: event.average_watts || null,
+                    maxPower: event.max_watts || null,
+                    avgCadence: event.average_cadence || null,
+                    elevationGain: event.total_elevation_gain || null,
+                    distance: event.distance || null,
+                    avgSpeed: event.average_speed || null,
+                    calories: event.kilojoules ? Math.round(event.kilojoules / 4.184) : 
+                             event.calories ? Math.round(event.calories) : null,
+                    perceivedEffort: event.perceived_exertion || null,
+                    description: event.description || null
+                };
+            } else if (isCompleted && event.id) {
+                // If no direct metrics but has ID, mark for detailed loading
                 processedEvent.needsCompletionData = true;
             }
             
@@ -221,6 +246,8 @@ const intervalsAPI = {
     // Process raw activity data into usable completion data
     processActivityData(rawData) {
         if (!rawData) return null;
+        
+        console.log('Processing activity data:', rawData);
         
         return {
             id: rawData.id,
