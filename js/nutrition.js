@@ -178,39 +178,41 @@ const nutritionCalculator = {
             return { fat, carbs };
         }
 
-        // Fallback to workout type-based approach
+        // Fallback to workout type-based approach - INCREASED BASELINE
         switch (workoutType) {
             case 'none':
-                fat = 80; // Fixed rest day values
-                carbs = 170;
+                // Rest day - increased from previous values to align with research
+                fat = 95; // Increased from 80g
+                carbs = 200; // Increased from 170g  
                 break;
             case 'easy':
-                fat = Math.round(bodyWeightKg * 0.95);
-                carbs = Math.round(bodyWeightKg * 3.2);
+                fat = Math.round(bodyWeightKg * 1.1); // ~96g
+                carbs = Math.round(bodyWeightKg * 3.8); // ~330g
                 break;
             case 'endurance':
-                fat = Math.round(bodyWeightKg * 0.9);
-                carbs = Math.round(bodyWeightKg * (4.0 + (duration > 120 ? 1.2 : 0)));
+                fat = Math.round(bodyWeightKg * 1.0);
+                carbs = Math.round(bodyWeightKg * (4.5 + (duration > 120 ? 1.5 : 0)));
                 break;
             case 'tempo':
-                fat = Math.round(bodyWeightKg * 0.85);
-                carbs = Math.round(bodyWeightKg * 4.8);
+                fat = Math.round(bodyWeightKg * 0.95);
+                carbs = Math.round(bodyWeightKg * 5.2);
                 break;
             case 'threshold':
-                fat = Math.round(bodyWeightKg * 0.8);
-                carbs = Math.round(bodyWeightKg * 5.5);
+                fat = Math.round(bodyWeightKg * 0.9);
+                carbs = Math.round(bodyWeightKg * 5.8);
                 break;
             case 'intervals':
-                fat = Math.round(bodyWeightKg * 0.75);
-                carbs = Math.round(bodyWeightKg * 6.2);
+                fat = Math.round(bodyWeightKg * 0.85);
+                carbs = Math.round(bodyWeightKg * 6.5);
                 break;
             case 'strength':
-                fat = Math.round(bodyWeightKg * 0.9);
-                carbs = Math.round(bodyWeightKg * 3.8);
+                fat = Math.round(bodyWeightKg * 1.0);
+                carbs = Math.round(bodyWeightKg * 4.2);
                 break;
             default:
-                fat = 80;
-                carbs = 170;
+                // Default to rest day values
+                fat = 95;
+                carbs = 200;
         }
 
         return { fat, carbs };
@@ -228,28 +230,29 @@ const nutritionCalculator = {
         // Research: Higher protein during caloric deficit (2.3-3.1g/kg FFM)
         const adjustedProtein = Math.round(protein * 1.25); // Increase protein significantly
         
-        // Create deficit based on workout intensity
+        // Create research-based deficit: 300-500 calories to match Fuelin targets
+        let targetCalorieReduction = 400; // Target 400 cal deficit
         let deficitFromCarbs = 0;
         let deficitFromFat = 0;
         
         if (workoutType === 'none' || workoutType === 'easy') {
-            // Larger deficit on rest/easy days
+            // Larger deficit on rest/easy days - 400+ cal reduction
+            deficitFromCarbs = Math.round(carbs * 0.4); // 40% carb reduction
+            deficitFromFat = Math.round(fat * 0.3); // 30% fat reduction
+        } else if (['intervals', 'threshold', 'tempo'].includes(workoutType)) {
+            // Smaller deficit on hard days to maintain performance - ~200 cal reduction
+            deficitFromCarbs = Math.round(carbs * 0.25); // 25% carb reduction
+            deficitFromFat = Math.round(fat * 0.2); // 20% fat reduction
+        } else {
+            // Moderate deficit on endurance days - ~300 cal reduction
             deficitFromCarbs = Math.round(carbs * 0.3); // 30% carb reduction
             deficitFromFat = Math.round(fat * 0.25); // 25% fat reduction
-        } else if (['intervals', 'threshold', 'tempo'].includes(workoutType)) {
-            // Smaller deficit on hard days to maintain performance
-            deficitFromCarbs = Math.round(carbs * 0.15); // 15% carb reduction
-            deficitFromFat = Math.round(fat * 0.15); // 15% fat reduction
-        } else {
-            // Moderate deficit on endurance days
-            deficitFromCarbs = Math.round(carbs * 0.2); // 20% carb reduction
-            deficitFromFat = Math.round(fat * 0.2); // 20% fat reduction
         }
 
         return {
             protein: adjustedProtein,
-            fat: Math.max(fat - deficitFromFat, Math.round(fat * 0.6)), // Don't go too low
-            carbs: Math.max(carbs - deficitFromCarbs, Math.round(carbs * 0.5)) // Don't go too low
+            fat: Math.max(fat - deficitFromFat, Math.round(fat * 0.5)), // Don't go too low
+            carbs: Math.max(carbs - deficitFromCarbs, Math.round(carbs * 0.4)) // Don't go too low
         };
     },
 
