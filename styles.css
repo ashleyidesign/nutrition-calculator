@@ -2359,6 +2359,410 @@ input:focus, select:focus {
     }
 }
 
+/* Enhanced Workout Bar Chart Visualization */
+.workout-chart {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.workout-chart h5 {
+    margin-bottom: 15px;
+    color: #0F1020;
+    font-size: 1.1em;
+}
+
+/* Bar chart with intensity scaling */
+.workout-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 120px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.intensity-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    width: 50px;
+    height: 100%;
+    padding-right: 10px;
+    color: #666;
+    font-size: 0.8em;
+}
+
+.chart-container {
+    flex: 1;
+    height: 100%;
+    position: relative;
+    border-left: 2px solid #ddd;
+    border-bottom: 2px solid #ddd;
+}
+
+.workout-bars {
+    display: flex;
+    align-items: flex-end;
+    height: calc(100% - 25px); /* Leave space for time axis */
+    width: 100%;
+}
+
+.workout-bar {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    margin-right: 1px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+    position: relative;
+    min-width: 8px; /* Ensure small intervals are visible */
+}
+
+.workout-bar:hover {
+    filter: brightness(1.1);
+    transform: scaleY(1.02);
+    z-index: 10;
+}
+
+.workout-bar:last-child {
+    margin-right: 0;
+}
+
+.bar-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    font-weight: bold;
+    padding: 3px;
+    font-size: 0.8em;
+}
+
+.bar-duration {
+    font-size: 0.9em;
+    margin-bottom: 2px;
+    font-weight: bold;
+}
+
+.bar-intensity {
+    font-size: 0.75em;
+    opacity: 0.9;
+}
+
+.time-axis {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 25px;
+    border-top: 1px solid #ddd;
+}
+
+.time-marker {
+    position: absolute;
+    bottom: 0;
+    transform: translateX(-50%);
+    font-size: 0.75em;
+    color: #666;
+    padding: 3px 0;
+    white-space: nowrap;
+}
+
+.time-marker:first-child {
+    transform: translateX(0);
+}
+
+.time-marker:last-child {
+    transform: translateX(-100%);
+}
+
+/* Enhanced workout summary */
+.workout-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 15px 0;
+    border-top: 1px solid #e9ecef;
+}
+
+.workout-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.total-duration {
+    color: #0F1020;
+    font-size: 1.1em;
+}
+
+.interval-count {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.zone-breakdown {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.zone-label-header {
+    font-size: 0.9em;
+    color: #666;
+    font-weight: 500;
+}
+
+.zone-times {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.zone-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    color: white;
+    font-size: 0.85em;
+    font-weight: 500;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.zone-label {
+    font-weight: bold;
+}
+
+.zone-duration {
+    opacity: 0.9;
+}
+
+/* Interval details section */
+.interval-details {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.interval-details h6 {
+    margin-bottom: 12px;
+    color: #0F1020;
+    font-size: 1em;
+}
+
+.interval-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.interval-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    font-size: 0.9em;
+}
+
+.interval-number {
+    font-weight: bold;
+    color: #666;
+    min-width: 20px;
+}
+
+.interval-duration {
+    font-weight: 600;
+    color: #0F1020;
+    min-width: 40px;
+}
+
+.interval-intensity {
+    font-weight: 500;
+    text-transform: capitalize;
+    min-width: 60px;
+}
+
+.interval-target {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+    color: #0F1020;
+}
+
+.interval-note {
+    color: #666;
+    font-style: italic;
+    flex: 1;
+    font-size: 0.85em;
+}
+
+/* Workout description/notes */
+.workout-description-chart {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.workout-description-chart h6 {
+    margin-bottom: 10px;
+    color: #0F1020;
+    font-size: 1em;
+}
+
+.workout-notes {
+    color: #555;
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+/* Simple workout chart (fallback) */
+.simple-workout-info {
+    text-align: center;
+    padding: 20px;
+}
+
+.simple-workout-info .workout-type {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #0F1020;
+    margin-bottom: 8px;
+}
+
+.simple-workout-info .workout-duration {
+    font-size: 1em;
+    color: #006989;
+    margin-bottom: 12px;
+}
+
+.simple-workout-info .workout-description {
+    color: #666;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Responsive design for charts */
+@media (max-width: 768px) {
+    .workout-bar-chart {
+        height: 100px;
+    }
+    
+    .intensity-axis {
+        width: 40px;
+        font-size: 0.7em;
+    }
+    
+    .bar-content {
+        padding: 2px;
+        font-size: 0.7em;
+    }
+    
+    .bar-duration {
+        font-size: 0.8em;
+    }
+    
+    .bar-intensity {
+        font-size: 0.65em;
+    }
+    
+    .time-marker {
+        font-size: 0.7em;
+    }
+    
+    .workout-summary {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .zone-breakdown {
+        align-items: flex-start;
+    }
+    
+    .zone-times {
+        justify-content: flex-start;
+    }
+    
+    .interval-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .interval-item {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .interval-note {
+        flex-basis: 100%;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .workout-bar-chart {
+        height: 80px;
+    }
+    
+    .workout-bar {
+        min-width: 6px;
+    }
+    
+    .bar-content {
+        font-size: 0.65em;
+    }
+    
+    .bar-duration {
+        font-size: 0.75em;
+    }
+    
+    .bar-intensity {
+        display: none; /* Hide intensity text on very small screens */
+    }
+    
+    .zone-time {
+        font-size: 0.8em;
+        padding: 4px 8px;
+    }
+}
+/* Zone color legend for reference */
+.zone-legend {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 0.8em;
+}
+
+.zone-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.zone-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .calendar-grid {

@@ -619,10 +619,17 @@ const calendarManager = {
             intervals: intervals.map(i => `${i.durationMinutes}min ${i.intensity}`)
         });
         
-        // Generate workout timeline bars
-        const timelineBars = intervals.map((interval, index) => {
+        // Find max intensity for scaling
+        const maxIntensityValue = this.getMaxIntensityValue(intervals);
+        
+        // Generate workout chart bars with varying heights
+        const chartBars = intervals.map((interval, index) => {
             const widthPercent = (interval.duration / totalDuration) * 100;
             const durationMin = interval.durationMinutes;
+            
+            // Calculate height based on intensity
+            const intensityValue = this.getIntensityValue(interval);
+            const heightPercent = (intensityValue / maxIntensityValue) * 100;
             
             // Get color based on intensity
             const barColor = this.getIntensityColor(interval.intensity);
@@ -635,17 +642,24 @@ const calendarManager = {
                 } else if (interval.targetType === 'hr_percent') {
                     targetDisplay = `${interval.targetValue}%`;
                 }
+            } else {
+                targetDisplay = interval.intensity.toUpperCase();
             }
             
             return `
-                <div class="workout-segment" 
-                     style="width: ${widthPercent}%; background-color: ${barColor};" 
-                     title="${durationMin}min - ${interval.intensity} ${targetDisplay}">
-                    <div class="segment-duration">${durationMin}'</div>
-                    <div class="segment-intensity">${targetDisplay || interval.intensity.toUpperCase()}</div>
+                <div class="workout-bar" 
+                     style="width: ${widthPercent}%; height: ${heightPercent}%; background-color: ${barColor};" 
+                     title="${durationMin}min - ${interval.intensity} ${interval.targetValue || ''}${interval.targetType === 'power' ? 'W' : interval.targetType === 'hr_percent' ? '%' : ''}">
+                    <div class="bar-content">
+                        <div class="bar-duration">${durationMin}'</div>
+                        <div class="bar-intensity">${targetDisplay}</div>
+                    </div>
                 </div>
             `;
         }).join('');
+        
+        // Generate time markers
+        const timeMarkers = this.generateTimeMarkers(intervals, totalDuration);
         
         // Generate zone breakdown
         const zoneBreakdown = zoneTimes
@@ -668,8 +682,20 @@ const calendarManager = {
             <div class="workout-chart">
                 <h5>📊 Workout Structure</h5>
                 
-                <div class="workout-timeline">
-                    ${timelineBars}
+                <div class="workout-bar-chart">
+                    <div class="intensity-axis">
+                        <div class="axis-label-top">${Math.round(maxIntensityValue)}${intervals.some(i => i.targetType === 'power') ? 'W' : '%'}</div>
+                        <div class="axis-label-mid">${Math.round(maxIntensityValue/2)}${intervals.some(i => i.targetType === 'power') ? 'W' : '%'}</div>
+                        <div class="axis-label-bottom">0${intervals.some(i => i.targetType === 'power') ? 'W' : '%'}</div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="workout-bars">
+                            ${chartBars}
+                        </div>
+                        <div class="time-axis">
+                            ${timeMarkers.join('')}
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="workout-summary">
@@ -715,6 +741,65 @@ const calendarManager = {
                 </div>
             </div>
         `;
+    },
+
+    // Get numeric intensity value for height calculation
+    getIntensityValue(interval) {
+        // If we have actual target values, use those
+        if (interval.targetValue) {
+            return interval.targetValue;
+        }
+        
+        // Otherwise use intensity-based estimates
+        const intensityValues = {
+            'recovery': 80,      // Low intensity
+            'endurance': 140,    // Moderate intensity
+            'tempo': 180,        // Medium-high intensity
+            'threshold': 220,    // High intensity
+            'vo2max': 280,       // Very high intensity
+            'moderate': 120      // Default
+        };
+        
+        return intensityValues[interval.intensity] || intensityValues['moderate'];
+    },
+
+    // Find maximum intensity value for chart scaling
+    getMaxIntensityValue(intervals) {
+        let maxValue = 0;
+        
+        intervals.forEach(interval => {
+            const value = this.getIntensityValue(interval);
+            if (value > maxValue) {
+                maxValue = value;
+            }
+        });
+        
+        // Add some headroom for better visual appearance
+        return Math.max(maxValue * 1.1, 100);
+    },
+
+    // Generate time markers for x-axis
+    generateTimeMarkers(intervals, totalDuration) {
+        const timeMarkers = [];
+        let currentTime = 0;
+        
+        // Add start marker
+        timeMarkers.push(`<div class="time-marker" style="left: 0%;">0:00</div>`);
+        
+        intervals.forEach((interval, index) => {
+            currentTime += interval.duration;
+            const minutes = Math.floor(currentTime / 60);
+            const seconds = currentTime % 60;
+            const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const position = (currentTime / totalDuration) * 100;
+            
+            // Only add markers for significant intervals to avoid crowding
+            if (interval.duration >= 120 || index === intervals.length - 1) { // 2+ minutes or last interval
+                timeMarkers.push(`<div class="time-marker" style="left: ${position}%;">${timeStr}</div>`);
+            }
+        });
+        
+        return timeMarkers;
     },
 
     // Fallback for workouts without detailed interval structure
