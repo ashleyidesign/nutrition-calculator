@@ -48,6 +48,9 @@ export default async function handler(req, res) {
       if (eventsResponse.status === 'fulfilled' && eventsResponse.value.ok) {
         eventsData = await eventsResponse.value.json();
         console.log(`Found ${eventsData.length} planned events`);
+        
+        // Fetch detailed workout structure for planned events
+        eventsData = await fetchWorkoutDetails(eventsData, athleteId, headers);
       } else {
         console.warn('Events API failed:', eventsResponse.status === 'fulfilled' ? eventsResponse.value.status : eventsResponse.reason);
       }
@@ -78,6 +81,9 @@ export default async function handler(req, res) {
       if (eventsResponse.status === 'fulfilled' && eventsResponse.value.ok) {
         eventsData = await eventsResponse.value.json();
         console.log(`Found ${eventsData.length} planned events for ${date}`);
+        
+        // Fetch detailed workout structure for planned events
+        eventsData = await fetchWorkoutDetails(eventsData, athleteId, headers);
       } else {
         console.warn('Events API failed:', eventsResponse.status === 'fulfilled' ? eventsResponse.value.status : eventsResponse.reason);
       }
@@ -113,6 +119,164 @@ export default async function handler(req, res) {
       details: error.message 
     });
   }
+}
+
+// NEW: Fetch detailed workout structure for events
+async function fetchWorkoutDetails(events, athleteId, headers) {
+  const enhancedEvents = [];
+  
+  for (const event of events) {
+    let enhancedEvent = { ...event };
+    
+    // For planned workouts, fetch detailed structure if available
+    if (event.id && (event.workout_doc || event.type === 'Workout')) {
+      try {
+        // Fetch detailed workout data including intervals
+        const workoutUrl = `https://intervals.icu/api/v1/athlete/${athleteId}/events/${event.id}`;
+        console.log(`Fetching workout details for event ${event.id}:`, workoutUrl);
+        
+        const workoutResponse = await fetch(workoutUrl, { headers });
+        
+        if (workoutResponse.ok) {
+          const workoutDetails = await workoutResponse.json();
+          console.log(`✅ Got workout details for ${event.name}:`, {
+            hasSteps: !!workoutDetails.workout_doc?.steps,
+            stepCount: workoutDetails.workout_doc?.steps?.length || 0,
+            hasZoneTimes: !!workoutDetails.workout_doc?.zoneTimes
+          });
+          
+          // Merge detailed workout structure
+          enhancedEvent = {
+            ...enhancedEvent,
+            workout_doc: workoutDetails.workout_doc,
+            description: workoutDetails.description || enhancedEvent.description,
+            workout_code: workoutDetails.workout_code || enhancedEvent.workout_code,
+            // Add intervals structure for easier parsing
+            intervals: parseWorkoutIntervals(workoutDetails.workout_doc)
+          };
+        } else {
+          console.warn(`Failed to fetch workout details for event ${event.id}: ${workoutResponse.status}`);
+        }
+      } catch (error) {
+        console.warn(`Error fetching workout details for event ${event.id}:`, error.message);
+      }
+    }
+    
+    enhancedEvents.push(enhancedEvent);
+  }
+  
+  return enhancedEvents;
+}
+
+// NEW: Parse workout document into simplified intervals structure
+function parseWorkoutIntervals(workoutDoc) {
+  if (!workoutDoc || !workoutDoc.steps) {
+    return null;
+  }
+  
+  const intervals = [];
+  let currentTime = 0;
+  
+  workoutDoc.steps.forEach((step, index) => {
+    const duration = step.duration || 0; // Duration in seconds
+    const durationMinutes = Math.round(duration / 60);
+    
+    // Determine intensity from power or HR zones
+    let intensity = 'moderate';
+    let targetValue = null;
+    let targetType = null;
+    
+    if (step.power) {
+      const avgPower = (step.power.start + step.power.end) / 2;
+      targetValue = Math.round(avgPower);
+      targetType = 'power';
+      
+      // Classify power zones (rough estimates)
+      if (avgPower < 120) intensity = 'recovery';
+      else if (avgPower < 160) intensity = 'endurance'; 
+      else if (avgPower < 200) intensity = 'tempo';
+      else if (avgPower < 250) intensity = 'threshold';
+      else intensity = 'vo2max';
+      
+    } else if (step.hr) {
+      const avgHR = (step.hr.start + step.hr.end) / 2;
+      targetValue = Math.round(avgHR);
+      targetType = 'hr_percent';
+      
+      // Classify HR zones (% of LTHR)
+      if (avgHR < 75) intensity = 'recovery';
+      else if (avgHR < 82) intensity = 'endurance';
+      else if (avgHR < 87) intensity = 'tempo';
+      else if (avgHR < 92) intensity = 'threshold';
+      else intensity = 'vo2max';
+    }
+    
+    intervals.push({
+      index: index,
+      startTime: currentTime,
+      endTime: currentTime + duration,
+      duration: duration,
+      durationMinutes: durationMinutes,
+      intensity: intensity,
+      targetValue: targetValue,
+      targetType: targetType,
+      description: step.text || step.note || null,
+      rawStep: step // Keep original for detailed parsing
+    });
+    
+    currentTime += duration;
+  });
+  
+  // Add zone time summary if available
+  const zoneTimes = workoutDoc.zoneTimes || [];
+  const significantZones = zoneTimes.filter(zone => zone.secs > 60); // Only zones with >1 min
+  
+  return {
+    intervals: intervals,
+    totalDuration: currentTime,
+    totalDurationMinutes: Math.round(currentTime / 60),
+    zoneTimes: significantZones,
+    workoutType: classifyWorkoutFromIntervals(intervals, significantZones)
+  };
+}
+
+// NEW: Classify workout type based on interval structure
+function classifyWorkoutFromIntervals(intervals, zoneTimes) {
+  if (!intervals || intervals.length === 0) return 'unknown';
+  
+  // Count time in different intensities
+  let recoveryTime = 0;
+  let enduranceTime = 0;
+  let tempoTime = 0;
+  let thresholdTime = 0;
+  let vo2maxTime = 0;
+  
+  intervals.forEach(interval => {
+    const duration = interval.duration;
+    switch(interval.intensity) {
+      case 'recovery': recoveryTime += duration; break;
+      case 'endurance': enduranceTime += duration; break;
+      case 'tempo': tempoTime += duration; break;
+      case 'threshold': thresholdTime += duration; break;
+      case 'vo2max': vo2maxTime += duration; break;
+    }
+  });
+  
+  const totalTime = recoveryTime + enduranceTime + tempoTime + thresholdTime + vo2maxTime;
+  
+  // Classify based on dominant intensity
+  if (vo2maxTime / totalTime > 0.15) return 'intervals';
+  if (thresholdTime / totalTime > 0.25) return 'threshold';
+  if (tempoTime / totalTime > 0.3) return 'tempo';
+  if (enduranceTime / totalTime > 0.6) return 'endurance';
+  
+  // Check for strength endurance patterns (low cadence, high force)
+  const hasLowCadence = intervals.some(interval => 
+    interval.description && interval.description.toLowerCase().includes('cadence')
+  );
+  if (hasLowCadence) return 'strength';
+  
+  return 'endurance'; // Default fallback
 }
 
 // Helper function to combine and deduplicate events and activities

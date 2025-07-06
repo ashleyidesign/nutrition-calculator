@@ -2054,6 +2054,311 @@ input:focus, select:focus {
     border-radius: 50%;
 }
 
+/* Enhanced Workout Chart Visualization */
+.workout-chart {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.workout-chart h5 {
+    margin-bottom: 15px;
+    color: #0F1020;
+    font-size: 1.1em;
+}
+
+/* NEW: Timeline-based visualization */
+.workout-timeline {
+    display: flex;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #ddd;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.workout-segment {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    font-weight: bold;
+    font-size: 0.85em;
+    position: relative;
+    border-right: 1px solid rgba(255,255,255,0.3);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-width: 30px; /* Ensure small intervals are visible */
+}
+
+.workout-segment:hover {
+    filter: brightness(1.1);
+    transform: scaleY(1.05);
+    z-index: 10;
+}
+
+.workout-segment:last-child {
+    border-right: none;
+}
+
+.segment-duration {
+    font-size: 1em;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.segment-intensity {
+    font-size: 0.75em;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* Enhanced workout summary */
+.workout-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 15px 0;
+    border-top: 1px solid #e9ecef;
+}
+
+.workout-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.total-duration {
+    color: #0F1020;
+    font-size: 1.1em;
+}
+
+.interval-count {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.zone-breakdown {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.zone-label-header {
+    font-size: 0.9em;
+    color: #666;
+    font-weight: 500;
+}
+
+.zone-times {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.zone-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    color: white;
+    font-size: 0.85em;
+    font-weight: 500;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.zone-label {
+    font-weight: bold;
+}
+
+.zone-duration {
+    opacity: 0.9;
+}
+
+/* Interval details section */
+.interval-details {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.interval-details h6 {
+    margin-bottom: 12px;
+    color: #0F1020;
+    font-size: 1em;
+}
+
+.interval-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.interval-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    font-size: 0.9em;
+}
+
+.interval-number {
+    font-weight: bold;
+    color: #666;
+    min-width: 20px;
+}
+
+.interval-duration {
+    font-weight: 600;
+    color: #0F1020;
+    min-width: 40px;
+}
+
+.interval-intensity {
+    font-weight: 500;
+    text-transform: capitalize;
+    min-width: 60px;
+}
+
+.interval-target {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+    color: #0F1020;
+}
+
+.interval-note {
+    color: #666;
+    font-style: italic;
+    flex: 1;
+    font-size: 0.85em;
+}
+
+/* Workout description/notes */
+.workout-description-chart {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.workout-description-chart h6 {
+    margin-bottom: 10px;
+    color: #0F1020;
+    font-size: 1em;
+}
+
+.workout-notes {
+    color: #555;
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+/* Simple workout chart (fallback) */
+.simple-workout-info {
+    text-align: center;
+    padding: 20px;
+}
+
+.simple-workout-info .workout-type {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #0F1020;
+    margin-bottom: 8px;
+}
+
+.simple-workout-info .workout-duration {
+    font-size: 1em;
+    color: #006989;
+    margin-bottom: 12px;
+}
+
+.simple-workout-info .workout-description {
+    color: #666;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Responsive design for charts */
+@media (max-width: 768px) {
+    .workout-timeline {
+        height: 60px;
+    }
+    
+    .workout-segment {
+        font-size: 0.75em;
+        min-width: 25px;
+    }
+    
+    .segment-intensity {
+        display: none; /* Hide detailed text on small screens */
+    }
+    
+    .workout-summary {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .zone-breakdown {
+        align-items: flex-start;
+    }
+    
+    .zone-times {
+        justify-content: flex-start;
+    }
+    
+    .interval-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .interval-item {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .interval-note {
+        flex-basis: 100%;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .workout-timeline {
+        height: 50px;
+    }
+    
+    .workout-segment {
+        font-size: 0.7em;
+        min-width: 20px;
+    }
+    
+    .segment-duration {
+        font-size: 0.9em;
+    }
+    
+    .zone-time {
+        font-size: 0.8em;
+        padding: 4px 8px;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .calendar-grid {
