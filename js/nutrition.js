@@ -10,7 +10,7 @@ const nutritionCalculator = {
 
         const baseMacros = this.calculateMacros(bodyWeightKg, wt, dur, isRaceDay, isPostRace, isCarboLoading, currentGoals);
         const dailyCalories = (baseMacros.protein * 4) + (baseMacros.carbs * 4) + (baseMacros.fat * 9);
-        const fueling = this.calculateWorkoutFueling(wt, dur, isRaceDay);
+        const fueling = this.calculateWorkoutFueling(wt, dur, isRaceDay, isCarboLoading);
 
         let finalNutrition = {
             calories: Math.round(dailyCalories),
@@ -206,7 +206,7 @@ const nutritionCalculator = {
         };
     },
 
-    calculateWorkoutFueling(workoutType, duration, isRaceDay) {
+    calculateWorkoutFueling(workoutType, duration, isRaceDay, isCarboLoading = false) {
         let duringWorkoutCarbs = 0;
         let fuelingTips = [];
         let preWorkoutCarbs = 'Varies';
