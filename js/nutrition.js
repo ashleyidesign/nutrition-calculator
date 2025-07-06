@@ -236,8 +236,8 @@ const nutritionCalculator = {
         
         if (workoutType === 'none' || workoutType === 'easy') {
             // Larger deficit on rest/easy days - tuned to hit exactly 2000 cal
-            deficitFromCarbs = Math.round(carbs * 0.38); // 38% carb reduction (was 35%)
-            deficitFromFat = Math.round(fat * 0.28); // 28% fat reduction (was 25%)
+            deficitFromCarbs = Math.round(carbs * 0.40); // 40% carb reduction (was 38%)
+            deficitFromFat = Math.round(fat * 0.30); // 30% fat reduction (was 28%)
         } else if (['intervals', 'threshold', 'tempo'].includes(workoutType)) {
             // Smaller deficit on hard days to maintain performance
             deficitFromCarbs = Math.round(carbs * 0.2); // 20% carb reduction
