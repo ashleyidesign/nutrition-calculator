@@ -1,4 +1,4 @@
-// Enhanced Nutrition Calculator with Fixed Macro Calculations
+// Enhanced Nutrition Calculator Aligned with Fuelin Recommendations
 const nutritionCalculator = {
     calculate(bodyWeightLbs = null, goals = null, workoutType = null, duration = null, isRaceDay = false, isPostRace = false, isCarboLoading = false, completionAdjustments = null) {
         const bw = bodyWeightLbs !== null ? bodyWeightLbs : parseInt(document.getElementById('bodyWeight').value);
@@ -94,111 +94,173 @@ const nutritionCalculator = {
     },
 
     calculateMacros(bodyWeightKg, workoutType, duration, isRaceDay, isPostRace, isCarboLoading, goals) {
-        let p_mult, f_mult, c_mult;
+        let protein, fat, carbs;
 
-        // Step 1: Set the baseline macros for the day type
+        // Base values for 192lb (87kg) athlete matching your actual targets
+        const baseProtein = 150; // Your consistent protein target
+        
+        // Step 1: Set macros based on day type (matches Fuelin priority system)
         if (isRaceDay) {
-            p_mult = 2.2; f_mult = 1.7; c_mult = 8.6;
-        } else if (isPostRace) {
-            p_mult = 1.7; f_mult = 1.0; c_mult = 5.2;
+            // Race Day - Ultra high carbs like Fuelin's 749g example
+            protein = baseProtein; // Keep protein consistent
+            fat = Math.round(bodyWeightKg * 0.8); // Lower fat on race days (about 70g)
+            carbs = Math.round(bodyWeightKg * 8.6); // Very high carbs ~750g for race fueling
         } else if (isCarboLoading) {
-            p_mult = 1.7; f_mult = 1.0; c_mult = 8.2;
+            // Carb Loading Days - High carbs like Fuelin's 710-714g examples  
+            protein = baseProtein; // Keep protein consistent
+            fat = Math.round(bodyWeightKg * 0.8); // Lower fat to make room for carbs (about 70g)
+            carbs = Math.round(bodyWeightKg * 8.2); // High carbs ~714g for carb loading
+        } else if (isPostRace) {
+            // Post-Race Recovery - High carbs + higher protein like Fuelin's recovery
+            protein = Math.round(baseProtein * 1.1); // Slightly higher protein for recovery (~165g)
+            fat = Math.round(bodyWeightKg * 1.0); // Moderate fat (~87g)
+            carbs = Math.round(bodyWeightKg * 5.2); // High carbs for glycogen replenishment (~453g)
         } else {
-            // This is a regular training or rest day - use FUELIN baseline
-            // For 192lb (87kg) athlete: Target ~2250 calories (150p/90f/210c)
+            // Regular Training Days - Base on workout intensity
+            protein = baseProtein; // Consistent protein base
+            
             switch (workoutType) {
                 case 'none':
-                    // Rest day baseline - matches Fuelin exactly
-                    p_mult = 1.72; f_mult = 1.03; c_mult = 2.41; // 150p/90f/210c = 2250 cal
+                    // Rest day - your actual targets: 150p, 80f, 170c
+                    fat = 80; // Fixed at 80g fat
+                    carbs = 170; // Fixed at 170g carbs
                     break;
+                    
                 case 'easy':
-                    // Easy recovery workout
-                    p_mult = 1.72; f_mult = 1.03; c_mult = 2.6;
+                    // Easy recovery workout - slight bump from rest day
+                    fat = Math.round(bodyWeightKg * 0.95); // ~83g fat  
+                    carbs = Math.round(bodyWeightKg * 3.0); // ~260g carbs
                     break;
+                    
                 case 'endurance':
-                    // Long endurance workout (Z1-Z2)
-                    p_mult = 1.72; f_mult = 1.1; c_mult = 3.5 + (duration > 120 ? 0.8 : 0);
+                    // Long endurance workout - more carbs for sustained energy
+                    fat = Math.round(bodyWeightKg * 0.9); // ~78g fat
+                    carbs = Math.round(bodyWeightKg * 3.8 + (duration > 120 ? 0.8 * bodyWeightKg : 0)); // ~330g+ carbs
                     break;
+                    
                 case 'tempo':
-                    // Tempo workout (Z3) - moderate carbs
-                    p_mult = 1.72; f_mult = 1.0; c_mult = 4.2;
+                    // Tempo workout - moderate high carbs
+                    fat = Math.round(bodyWeightKg * 0.85); // ~74g fat
+                    carbs = Math.round(bodyWeightKg * 4.5); // ~390g carbs
                     break;
+                    
                 case 'threshold':
-                    // Threshold workout (Z4) - higher carbs
-                    p_mult = 1.72; f_mult = 1.0; c_mult = 4.8;
+                    // Threshold workout - high carbs for intensity
+                    fat = Math.round(bodyWeightKg * 0.8); // ~70g fat
+                    carbs = Math.round(bodyWeightKg * 5.2); // ~450g carbs
                     break;
+                    
                 case 'intervals':
-                    // High intensity intervals (Z5+) - highest carbs
-                    p_mult = 1.72; f_mult = 1.0; c_mult = 5.4;
+                    // High intensity intervals - highest training carbs
+                    fat = Math.round(bodyWeightKg * 0.75); // ~65g fat
+                    carbs = Math.round(bodyWeightKg * 5.8); // ~505g carbs
                     break;
+                    
                 case 'strength':
                     // Strength training - higher protein, moderate carbs
-                    p_mult = 1.9; f_mult = 1.1; c_mult = 3.2;
+                    protein = Math.round(baseProtein * 1.2); // ~180g protein
+                    fat = Math.round(bodyWeightKg * 0.9); // ~78g fat
+                    carbs = Math.round(bodyWeightKg * 3.5); // ~305g carbs
                     break;
+                    
                 default:
-                    p_mult = 1.72; f_mult = 1.03; c_mult = 2.41;
+                    // Default to rest day values: 150p, 80f, 170c
+                    fat = 80;
+                    carbs = 170;
             }
         }
-        
-        // Step 2: Apply goal-based adjustments for regular training days only
+
+        // Step 2: Apply goal-based adjustments ONLY for regular training days
         const isRegularDay = !isRaceDay && !isPostRace && !isCarboLoading;
         if (isRegularDay) {
             switch(goals) {
                 case 'weight-loss':
-                    // Create deficit from baseline
+                    // Create deficit primarily from carbs and fat
                     if (workoutType === 'none' || workoutType === 'easy') {
-                        // Target ~2000 calories for rest days during weight loss
-                        p_mult = 1.72; f_mult = 0.92; c_mult = 1.95;
+                        // More aggressive cut on rest/easy days
+                        fat = Math.round(fat * 0.85); // Reduce fat by 15%
+                        carbs = Math.round(carbs * 0.8); // Reduce carbs by 20%
                     } else {
-                        // Reduce carbs/fat for workout days
-                        f_mult = Math.max(0.8, f_mult - 0.15);
-                        c_mult = Math.max(2.0, c_mult - 0.8);
+                        // Smaller cut on workout days to maintain performance
+                        fat = Math.round(fat * 0.9); // Reduce fat by 10%
+                        carbs = Math.round(carbs * 0.9); // Reduce carbs by 10%
                     }
                     break;
                 
                 case 'performance':
-                    // Add modest surplus for performance focus
-                    c_mult += 1.0; // Add carbs primarily
-                    p_mult += 0.1; // Small protein increase
+                    // Add surplus primarily from carbs
+                    carbs = Math.round(carbs * 1.15); // Increase carbs by 15%
+                    fat = Math.round(fat * 1.05); // Small fat increase
                     break;
 
                 case 'maintenance':
-                    // Use baseline as-is (already matches Fuelin targets)
+                    // Keep calculated values as-is
                     break;
             }
         }
 
         return {
-            protein: Math.round(bodyWeightKg * p_mult),
-            fat: Math.round(bodyWeightKg * f_mult),
-            carbs: Math.round(bodyWeightKg * c_mult)
+            protein: Math.round(protein),
+            fat: Math.round(fat),
+            carbs: Math.round(carbs)
         };
     },
 
     calculateWorkoutFueling(workoutType, duration, isRaceDay) {
         let duringWorkoutCarbs = 0;
         let fuelingTips = [];
+        let preWorkoutCarbs = 'Varies';
+        let postWorkoutCarbs = 'Varies';
 
         if (isRaceDay) {
+            // Race day fueling - very specific like Fuelin
             duringWorkoutCarbs = 90;
-            fuelingTips.push('RACE FUEL: Aim for 90-120g carbs/hr. This is your primary goal.');
+            preWorkoutCarbs = '100g (2-3 hours before)';
+            postWorkoutCarbs = 'As part of recovery plan';
+            fuelingTips = [
+                'RACE FUEL: Target 90-120g carbs/hr during race',
+                'Consume race day breakfast 2-3 hours before start',
+                'Practice your fueling strategy in training',
+                'Have backup fuel options ready'
+            ];
+        } else if (isCarboLoading) {
+            // Carb loading specific tips
+            fuelingTips = [
+                'Focus on easily digestible carbs (rice, pasta, bread)',
+                'Reduce fiber intake to minimize GI distress', 
+                'Stay well hydrated throughout the day',
+                'Avoid trying new foods during carb loading'
+            ];
         } else if (duration >= 60 && duration <= 90) {
             duringWorkoutCarbs = 40;
-            fuelingTips.push('Start fueling within the first 15 minutes.');
+            fuelingTips = [
+                'Start fueling within the first 15-20 minutes',
+                'Aim for easily digestible carbs',
+                'Hydrate regularly throughout the session'
+            ];
         } else if (duration > 90) {
             duringWorkoutCarbs = 60;
             if (['tempo', 'threshold', 'intervals'].includes(workoutType)) {
                 duringWorkoutCarbs = 80;
             }
-            fuelingTips.push('Start fueling early and dose frequently.');
+            fuelingTips = [
+                'Start fueling early and dose frequently (every 15-20 min)',
+                'Mix carb types for better absorption',
+                'Monitor hydration and electrolyte needs',
+                'Practice fueling strategy for longer sessions'
+            ];
         } else {
-            fuelingTips.push('No in-session fueling required for this workout.');
+            fuelingTips = [
+                'No in-session fueling required for this workout',
+                'Focus on pre and post-workout nutrition',
+                'Stay hydrated throughout'
+            ];
         }
 
         return {
-            preWorkoutCarbs: 'Varies',
+            preWorkoutCarbs: preWorkoutCarbs,
             duringWorkoutCarbs: duringWorkoutCarbs,
-            postWorkoutCarbs: 'Varies',
+            postWorkoutCarbs: postWorkoutCarbs,
             fluidIntake: 750,
             fuelingTips
         };
@@ -271,7 +333,9 @@ const nutritionCalculator = {
             html += `
                 <div class="fueling-notes">
                     <h4>⚡ Workout Fueling</h4>
+                    <p><strong>Pre-workout:</strong> ${nutrition.fueling.preWorkoutCarbs}</p>
                     <p><strong>During workout:</strong> ${nutrition.fueling.duringWorkoutCarbs}g carbs/hour</p>
+                    <p><strong>Post-workout:</strong> ${nutrition.fueling.postWorkoutCarbs}</p>
                     <p><strong>Fluid intake:</strong> ${nutrition.fueling.fluidIntake}ml/hour</p>
                     <ul>
                         ${nutrition.fueling.fuelingTips.map(tip => `<li>${tip}</li>`).join('')}

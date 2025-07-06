@@ -244,6 +244,7 @@ const calendarManager = {
         let isCarboLoading = false;
         let isPostRace = false;
 
+        // Check if yesterday was a race (for post-race recovery)
         const yesterday = new Date(date);
         yesterday.setDate(date.getDate() - 1);
         if (this.getEventsForDate(yesterday).some(e => e.category?.startsWith('RACE_'))) {
@@ -251,17 +252,21 @@ const calendarManager = {
             return { raceInfo: null, isCarboLoading: false, isPostRace: true };
         }
 
+        // If this day is a race, return race info
         if (raceInfo) {
             return { raceInfo, isCarboLoading: false, isPostRace: false };
         }
 
-        const upcomingRaces = this.findUpcomingRaces(date, 4); 
+        // Check for upcoming races within 3 days (changed from 4 to match 2-day carb loading)
+        const upcomingRaces = this.findUpcomingRaces(date, 3); 
         const importantRace = upcomingRaces.find(r => r.category === 'RACE_A' || r.category === 'RACE_B');
         
         if (importantRace) {
             const raceDate = new Date(importantRace.start_date_local.split('T')[0] + 'T12:00:00');
             const daysUntilRace = this.calculateDaysUntilRace(date, raceDate);
-            if (daysUntilRace >= 1 && daysUntilRace <= 3) {
+            
+            // Changed: Carb loading now starts 2 days before (was 1-3, now 1-2)
+            if (daysUntilRace >= 1 && daysUntilRace <= 2) {
                 isCarboLoading = true;
             }
         }
@@ -317,9 +322,9 @@ const calendarManager = {
             totalDuration,
             this.formatDate(date),
             dayEvents,
-            isRaceDay,      // ← This was missing!
-            isPostRace,     // ← This was missing!
-            isCarboLoading  // ← This was missing!
+            isRaceDay,      
+            isPostRace,     
+            isCarboLoading  
         );
     },
     
