@@ -4,7 +4,21 @@ const calendarManager = {
     bodyWeight: 192,
     goals: 'performance',
 
-    // NEW: Get workout type icon
+    workoutMapper: {
+        map(workout) {
+            const name = (workout.name || '').toLowerCase();
+            const type = (workout.type || '').toLowerCase();
+            if (name.includes('recovery') || name.includes('easy')) return 'easy';
+            if (name.includes('tempo') || name.includes('zone 3')) return 'tempo';
+            if (name.includes('threshold') || name.includes('zone 4')) return 'threshold';
+            if (name.includes('interval') || name.includes('zone 5')) return 'intervals';
+            if (name.includes('strength endurance') || name.includes('low cadence')) return 'intervals';
+            if (name.includes('strength') || type.includes('strength')) return 'strength';
+            return 'endurance';
+        }
+    },
+
+    // Get workout type icon
     getWorkoutIcon(workout) {
         const type = (workout.type || '').toLowerCase();
         const name = (workout.name || '').toLowerCase();
@@ -29,18 +43,6 @@ const calendarManager = {
         
         // Default workout icon
         return '🏋️';
-    },
-        map(workout) {
-            const name = (workout.name || '').toLowerCase();
-            const type = (workout.type || '').toLowerCase();
-            if (name.includes('recovery') || name.includes('easy')) return 'easy';
-            if (name.includes('tempo') || name.includes('zone 3')) return 'tempo';
-            if (name.includes('threshold') || name.includes('zone 4')) return 'threshold';
-            if (name.includes('interval') || name.includes('zone 5')) return 'intervals';
-            if (name.includes('strength endurance') || name.includes('low cadence')) return 'intervals';
-            if (name.includes('strength') || type.includes('strength')) return 'strength';
-            return 'endurance';
-        }
     },
     
     init() {
@@ -279,14 +281,14 @@ const calendarManager = {
         return this.events.filter(event => event.start_date_local.startsWith(dateStr));
     },
 
-    // NEW: Get tomorrow's workouts for forward-looking periodization
+    // Get tomorrow's workouts for forward-looking periodization
     getTomorrowWorkouts(date) {
         const tomorrow = new Date(date);
         tomorrow.setDate(date.getDate() + 1);
         return this.getEventsForDate(tomorrow);
     },
 
-    // NEW: Assess tomorrow's workout intensity
+    // Assess tomorrow's workout intensity
     assessTomorrowIntensity(tomorrowWorkouts) {
         if (!tomorrowWorkouts || tomorrowWorkouts.length === 0) return 'low';
         
@@ -309,7 +311,7 @@ const calendarManager = {
         return 'low';
     },
 
-    // NEW: Extract power data from workout
+    // Extract power data from workout
     extractPowerData(dayEvents) {
         if (!dayEvents || dayEvents.length === 0) return null;
         
@@ -346,7 +348,7 @@ const calendarManager = {
         return null;
     },
 
-    // NEW: Estimate power based on workout intensity
+    // Estimate power based on workout intensity
     estimatePowerFromIntensity(workoutType) {
         // Conservative estimates for 70kg athlete (adjust based on user)
         const powerEstimates = {
@@ -365,7 +367,7 @@ const calendarManager = {
         return Math.round(basePower * weightFactor);
     },
 
-    // NEW: Get highest workout intensity from day's events
+    // Get highest workout intensity from day's events
     getHighestWorkoutIntensity(dayEvents) {
         let highestIntensity = 'none';
         const intensityRanking = { 
@@ -435,7 +437,7 @@ const calendarManager = {
         });
     },
 
-    // ENHANCED: Forward-looking nutrition calculation
+    // Forward-looking nutrition calculation
     calculateDayNutrition(dayEvents, raceInfo, isCarboLoading, isPostRace, date, tomorrowWorkouts = null) {
         const totalDuration = dayEvents.reduce((acc, e) => acc + Math.round((e.moving_time || e.duration || 0) / 60), 0);
         
@@ -464,12 +466,12 @@ const calendarManager = {
             isRaceDay,      
             isPostRace,     
             isCarboLoading,
-            tomorrowWorkouts, // NEW: Pass tomorrow's workouts
-            powerData         // NEW: Pass power data
+            tomorrowWorkouts, // Pass tomorrow's workouts
+            powerData         // Pass power data
         );
     },
 
-    // NEW: Get periodization CSS class for styling
+    // Get periodization CSS class for styling
     getPeriodizationClass(periodizationNote) {
         if (!periodizationNote) return null;
         
