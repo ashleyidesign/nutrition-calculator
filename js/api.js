@@ -92,6 +92,18 @@ const intervalsAPI = {
                 hasKilojoules: !!event.kilojoules
             });
             
+            // Check for actual performance metrics
+            const hasActualMetrics = !!(
+                event.moving_time ||
+                event.distance ||
+                event.average_heartrate ||
+                event.average_watts ||
+                event.kilojoules ||
+                event.calories ||
+                event.max_heartrate ||
+                event.total_elevation_gain
+            );
+            
             // Determine if this is a completed activity or planned workout
             const isCompleted = this.isEventCompleted(event, isPastDate);
             
