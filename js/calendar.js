@@ -539,6 +539,9 @@ const calendarManager = {
                                 completionHtml = `<div class="planned-workout">📅 Planned (${duration} min)</div>`;
                             }
                             
+                            // Add workout chart for planned workouts
+                            const workoutChart = !e.isCompleted ? this.createWorkoutChart(e) : '';
+                            
                             return `
                                 <div class="workout-card ${e.isCompleted ? 'completed' : 'planned'}">
                                     <div class="workout-header">
@@ -549,6 +552,7 @@ const calendarManager = {
                                         <div class="workout-type">${e.type}</div>
                                     </div>
                                     ${completionHtml}
+                                    ${workoutChart}
                                 </div>
                             `;
                         }).join('')}
@@ -594,6 +598,99 @@ const calendarManager = {
         `;
         
         modal.style.display = 'block';
+    },
+
+    // Create workout visualization chart
+    createWorkoutChart(workout) {
+        if (!workout.workout_doc || !workout.workout_doc.steps) {
+            return '';
+        }
+        
+        const steps = workout.workout_doc.steps;
+        const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0);
+        
+        // Generate workout chart
+        const chartBars = steps.map((step, index) => {
+            const widthPercent = (step.duration / totalDuration) * 100;
+            const durationMin = Math.round(step.duration / 60);
+            
+            // Determine zone color based on power or HR
+            let zoneColor = '#ccc';
+            let zoneText = '';
+            
+            if (step.power) {
+                const avgPower = (step.power.start + step.power.end) / 2;
+                zoneColor = this.getPowerZoneColor(avgPower);
+                zoneText = `${step.power.start}-${step.power.end}W`;
+            } else if (step.hr) {
+                const avgHR = (step.hr.start + step.hr.end) / 2;
+                zoneColor = this.getHRZoneColor(avgHR);
+                zoneText = `${step.hr.start}-${step.hr.end}% LTHR`;
+            }
+            
+            return `
+                <div class="workout-segment" style="width: ${widthPercent}%; background-color: ${zoneColor};" 
+                     title="${durationMin}min - ${zoneText}">
+                    <div class="segment-duration">${durationMin}'</div>
+                    <div class="segment-intensity">${zoneText}</div>
+                </div>
+            `;
+        }).join('');
+        
+        // Zone time breakdown
+        const zoneBreakdown = workout.workout_doc.zoneTimes
+            .filter(zone => zone.secs > 0)
+            .map(zone => {
+                const minutes = Math.round(zone.secs / 60);
+                const color = this.getZoneColor(zone.id);
+                return `
+                    <div class="zone-time" style="background-color: ${color}">
+                        <span class="zone-label">${zone.id}</span>
+                        <span class="zone-duration">${minutes}min</span>
+                    </div>
+                `;
+            }).join('');
+        
+        return `
+            <div class="workout-chart">
+                <h5>📊 Workout Structure</h5>
+                <div class="workout-timeline">
+                    ${chartBars}
+                </div>
+                <div class="workout-summary">
+                    <div class="total-duration">
+                        <strong>Total: ${Math.round(totalDuration / 60)} minutes</strong>
+                    </div>
+                    <div class="zone-breakdown">
+                        ${zoneBreakdown}
+                    </div>
+                </div>
+                ${workout.description ? `
+                    <div class="workout-description-chart">
+                        <h6>Workout Details:</h6>
+                        <pre>${workout.description}</pre>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    // Get power zone colors (approximate zones)
+    getPowerZoneColor(watts) {
+        if (watts < 120) return '#4CAF50';      // Z1 - Active Recovery (Green)
+        if (watts < 140) return '#8BC34A';      // Z2 - Endurance (Light Green)  
+        if (watts < 160) return '#FFEB3B';      // Z3 - Tempo (Yellow)
+        if (watts < 180) return '#FF9800';      // Z4 - Threshold (Orange)
+        return '#F44336';                       // Z5+ - VO2/Anaerobic (Red)
+    },
+
+    // Get HR zone colors (based on LTHR percentage)
+    getHRZoneColor(lthrPercent) {
+        if (lthrPercent < 75) return '#4CAF50';     // Z1 - Active Recovery
+        if (lthrPercent < 82) return '#8BC34A';     // Z2 - Endurance
+        if (lthrPercent < 87) return '#FFEB3B';     // Z3 - Tempo  
+        if (lthrPercent < 92) return '#FF9800';     // Z4 - Threshold
+        return '#F44336';                           // Z5+ - VO2/Anaerobic
     },
 
     closeModal() {
