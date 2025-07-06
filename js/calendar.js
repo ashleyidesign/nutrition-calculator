@@ -693,6 +693,20 @@ const calendarManager = {
         return '#F44336';                           // Z5+ - VO2/Anaerobic
     },
 
+    // Get zone colors by zone ID
+    getZoneColor(zoneId) {
+        const zoneColors = {
+            'Z1': '#4CAF50',    // Green
+            'Z2': '#8BC34A',    // Light Green
+            'Z3': '#FFEB3B',    // Yellow
+            'Z4': '#FF9800',    // Orange
+            'Z5': '#F44336',    // Red
+            'Z6': '#E91E63',    // Pink
+            'Z7': '#9C27B0'     // Purple
+        };
+        return zoneColors[zoneId] || '#ccc';
+    },
+
     closeModal() {
         document.getElementById('dayDetailModal').style.display = 'none';
     },
