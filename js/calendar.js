@@ -609,33 +609,80 @@ const calendarManager = {
         const steps = workout.workout_doc.steps;
         const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0);
         
-        // Generate workout chart
+        // Find max intensity for scaling
+        const maxIntensity = Math.max(...steps.map(step => {
+            if (step.power) return (step.power.start + step.power.end) / 2;
+            if (step.hr) return (step.hr.start + step.hr.end) / 2;
+            return 100;
+        }));
+        
+        // Generate workout chart bars
         const chartBars = steps.map((step, index) => {
             const widthPercent = (step.duration / totalDuration) * 100;
             const durationMin = Math.round(step.duration / 60);
             
-            // Determine zone color based on power or HR
+            // Calculate intensity for height
+            let intensity = 50; // default
             let zoneColor = '#ccc';
             let zoneText = '';
             
             if (step.power) {
-                const avgPower = (step.power.start + step.power.end) / 2;
-                zoneColor = this.getPowerZoneColor(avgPower);
+                intensity = (step.power.start + step.power.end) / 2;
+                const heightPercent = (intensity / maxIntensity) * 100;
+                zoneColor = this.getPowerZoneColor(intensity);
                 zoneText = `${step.power.start}-${step.power.end}W`;
+                
+                return `
+                    <div class="workout-bar" style="width: ${widthPercent}%; height: ${heightPercent}%; background-color: ${zoneColor};" 
+                         title="${durationMin}min - ${zoneText}">
+                        <div class="bar-content">
+                            <div class="bar-duration">${durationMin}'</div>
+                            <div class="bar-intensity">${intensity.toFixed(0)}W</div>
+                        </div>
+                    </div>
+                `;
             } else if (step.hr) {
-                const avgHR = (step.hr.start + step.hr.end) / 2;
-                zoneColor = this.getHRZoneColor(avgHR);
+                intensity = (step.hr.start + step.hr.end) / 2;
+                const heightPercent = Math.min((intensity / 100) * 100, 100); // HR as percentage
+                zoneColor = this.getHRZoneColor(intensity);
                 zoneText = `${step.hr.start}-${step.hr.end}% LTHR`;
+                
+                return `
+                    <div class="workout-bar" style="width: ${widthPercent}%; height: ${heightPercent}%; background-color: ${zoneColor};" 
+                         title="${durationMin}min - ${zoneText}">
+                        <div class="bar-content">
+                            <div class="bar-duration">${durationMin}'</div>
+                            <div class="bar-intensity">${intensity.toFixed(0)}%</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Fallback for unknown intensity
+                return `
+                    <div class="workout-bar" style="width: ${widthPercent}%; height: 50%; background-color: ${zoneColor};" 
+                         title="${durationMin}min">
+                        <div class="bar-content">
+                            <div class="bar-duration">${durationMin}'</div>
+                        </div>
+                    </div>
+                `;
             }
-            
-            return `
-                <div class="workout-segment" style="width: ${widthPercent}%; background-color: ${zoneColor};" 
-                     title="${durationMin}min - ${zoneText}">
-                    <div class="segment-duration">${durationMin}'</div>
-                    <div class="segment-intensity">${zoneText}</div>
-                </div>
-            `;
         }).join('');
+        
+        // Time markers for x-axis
+        const timeMarkers = [];
+        let currentTime = 0;
+        steps.forEach((step, index) => {
+            if (index === 0) {
+                timeMarkers.push(`<div class="time-marker" style="left: 0%;">0:00</div>`);
+            }
+            currentTime += step.duration;
+            const minutes = Math.floor(currentTime / 60);
+            const seconds = currentTime % 60;
+            const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const position = (currentTime / totalDuration) * 100;
+            timeMarkers.push(`<div class="time-marker" style="left: ${position}%;">${timeStr}</div>`);
+        });
         
         // Zone time breakdown
         const zoneBreakdown = workout.workout_doc.zoneTimes
@@ -654,8 +701,20 @@ const calendarManager = {
         return `
             <div class="workout-chart">
                 <h5>📊 Workout Structure</h5>
-                <div class="workout-timeline">
-                    ${chartBars}
+                <div class="workout-bar-chart">
+                    <div class="intensity-axis">
+                        <div class="axis-label-top">${Math.round(maxIntensity)}${steps[0].power ? 'W' : '%'}</div>
+                        <div class="axis-label-mid">${Math.round(maxIntensity/2)}${steps[0].power ? 'W' : '%'}</div>
+                        <div class="axis-label-bottom">0${steps[0].power ? 'W' : '%'}</div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="workout-bars">
+                            ${chartBars}
+                        </div>
+                        <div class="time-axis">
+                            ${timeMarkers.join('')}
+                        </div>
+                    </div>
                 </div>
                 <div class="workout-summary">
                     <div class="total-duration">
